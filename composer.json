@@ -1,0 +1,30 @@
+{
+    "name": "uebb/hateoas-bundle",
+    "require": {
+        "symfony/form": "~2.6",
+        "symfony/validator": "~2.6",
+        "jms/serializer-bundle": "0.13.*",
+        "friendsofsymfony/rest-bundle": "~1.5",
+        "willdurand/hateoas-bundle": "0.1.*",
+        "pagerfanta/pagerfanta": "dev-master#0eec60b48d38132333369a681db2e32c42ad117d",
+        "hautelook/templated-uri-bundle": "~1.0",
+        "willdurand/rest-extra-bundle": "~1.0.0",
+        "nelmio/cors-bundle": "1.3.0",
+        "doctrine/dbal": "2.5.*",
+        "doctrine/common": "2.5.x-dev#b44549dcc98a18f0728df05df523bdf179edb90b",
+        "doctrine/orm": "2.5.x-dev#0e7646cf4b29e1e2a566549ee48f4995c15020d6",
+        "doctrine/doctrine-bundle": "1.3.*",
+        "doctrine/doctrine-cache-bundle": "~1.0",
+        "knplabs/doctrine-behaviors": "~1.0",
+        "symfony/yaml": "~2.6"
+    },
+    "authors": [
+        {
+            "name": "Jascha Dachtera",
+            "email": "jascha.dachtera@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": { "uebb\\HateoasBundle\\": "" }
+    }
+}
