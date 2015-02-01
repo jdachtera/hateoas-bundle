@@ -3,17 +3,37 @@
 namespace uebb\HateoasBundle\Service;
 
 use Doctrine\Common\Collections\Criteria;
-use Doctrine\ORM\EntityManager;
-
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 class QueryParser
 {
+
+    /**
+     * @var ContainerInterface
+     */
+    protected $container;
+
+
     /**
      * @var EntityManager
      */
     protected $entityManager;
+
+    public function __construct(ContainerInterface $container, EntityManagerInterface $entityManager)
+    {
+        $this->container = $container;
+        $this->entityManager = $entityManager;
+    }
+
+    protected function getCache()
+    {
+        return $this->container->get('doctrine_cache.providers.uebb_hateoas_query_cache');
+    }
 
     /**
      * Construct a Doctrine Criteria object from a Symfony web request
@@ -30,8 +50,8 @@ class QueryParser
             'request' => $request->query->all()
         ));
 
-        if ($this->cache->contains($cache_identifier)) {
-            return $this->cache->fetch($cache_identifier);
+        if ($this->getCache()->contains($cache_identifier)) {
+            return $this->getCache()->fetch($cache_identifier);
         }
 
         $criteria = new Criteria();
@@ -85,7 +105,7 @@ class QueryParser
             $criteria->orderBy($orders);
         }
 
-        $this->cache->save($cache_identifier, $criteria);
+        $this->getCache()->save($cache_identifier, $criteria);
 
         return $criteria;
     }

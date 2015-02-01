@@ -8,11 +8,20 @@
 
 namespace uebb\HateoasBundle\Service;
 
-use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
 use FOS\RestBundle\View\View;
+use Hateoas\Configuration\Route;
+use Hateoas\Representation\CollectionRepresentation;
+use Pagerfanta\Adapter\AdapterInterface;
+use Pagerfanta\Adapter\DoctrineORMAdapter;
+use Pagerfanta\Pagerfanta;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
+use uebb\HateoasBundle\Entity\ResourceInterface;
+use uebb\HateoasBundle\Representation\QueryablePaginatedRepresentation;
 
 class ResponseProcessor
 {
@@ -21,6 +30,12 @@ class ResponseProcessor
      * @var RouterInterface
      */
     protected $router;
+
+
+    public function __construct(RouterInterface $router)
+    {
+        $this->router = $router;
+    }
 
     protected function generateUrl($route, $parameters = array(), $referenceType = UrlGeneratorInterface::ABSOLUTE_PATH)
     {
@@ -53,12 +68,12 @@ class ResponseProcessor
         ), 400);
     }
 
-    public function getResourceCreationView($resource)
+    public function getResourceCreationView(ResourceInterface $resource)
     {
         $response = new Response();
         $response->setStatusCode(201);
 
-        $routeName = 'get_' . strtolower(basename(get_class($resource)));
+        $routeName = 'get_' . strtolower(basename(str_replace('\\', '//', get_class($resource))));
 
         // set the `Location` header when creating new resources
         $response->headers->set('Location', $this->generateUrl($routeName, array('id' => $resource->getId()), true));
@@ -74,7 +89,7 @@ class ResponseProcessor
      * @param BaseEntity $resource - The resource
      * @return View
      */
-    public function getResourceView(Request $request, BaseEntity $resource)
+    public function getResourceView(Request $request, ResourceInterface $resource)
     {
 
         $contentType = 'application/' . strtolower(str_replace('\\', '.', get_class($resource))) . '+json';
@@ -171,6 +186,7 @@ class ResponseProcessor
         if (!$limit) {
             $limit = 10;
         }
+
         $pagerfanta->setMaxPerPage($limit);
         $page = $request->query->get('page');
 

@@ -70,7 +70,7 @@ class DoctrineRelationProvider
     {
 
         /** @var \Doctrine\Common\Cache\CacheProvider $cache */
-        $cache = $this->container->get('doctrine_cache.providers.hateoas_relation_cache');
+        $cache = $this->container->get('doctrine_cache.providers.uebb_hateoas_relation_cache');
 
         if ($cache->contains($classMetadata->getName())) {
             return $cache->fetch($classMetadata->getName());

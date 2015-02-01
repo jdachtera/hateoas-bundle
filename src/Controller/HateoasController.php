@@ -8,7 +8,6 @@
 
 namespace uebb\HateoasBundle\Controller;
 
-use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\QueryBuilder;
 use FOS\RestBundle\Controller\Annotations;
 use FOS\RestBundle\Controller\FOSRestController;
@@ -16,9 +15,6 @@ use FOS\RestBundle\Routing\ClassResourceInterface;
 use FOS\RestBundle\View\View;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Router;
-use Symfony\Component\Security\Core\SecurityContext;
-use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Validator\Validator\RecursiveValidator;
 use uebb\HateoasBundle\Service\RequestProcessor;
 use uebb\HateoasBundle\Service\ResponseProcessor;
@@ -41,15 +37,20 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     protected $entityName;
 
     /**
-     * @var RequestProcessor
+     * @return RequestProcessor
      */
-    protected $requestProcessor;
+    protected function getRequestProcessor()
+    {
+        return $this->get('uebb.hateoas.request_processor');
+    }
 
     /**
-     * @var ResponseProcessor
+     * @return ResponseProcessor
      */
-    protected $responseProcessor;
-
+    protected function getResponseProcessor()
+    {
+        return $this->get('uebb.hateoas.response_processor');
+    }
 
     /**
      * Represents the collection of all resources of the entity type
@@ -60,8 +61,9 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function cgetAction(Request $request)
     {
         /** @var QueryBuilder $queryBuilder */
-        $queryBuilder = $this->requestProcessor->getResources($this->entityName, $request);
-        return $this->responseProcessor->getResourceCollectionView($request, $queryBuilder);
+        $queryBuilder = $this->getRequestProcessor()->getResources($this->entityName, $request);
+
+        return $this->getResponseProcessor()->getResourceCollectionView($request, $queryBuilder);
     }
 
     /**
@@ -73,8 +75,8 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
      */
     public function getAction($id, Request $request)
     {
-        $resource = $this->requestProcessor->getResource($this->entityName, $id);
-        return $this->responseProcessor->getResourceView($request, $resource);
+        $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
+        return $this->getResponseProcessor()->getResourceView($request, $resource);
     }
 
     /**
@@ -85,19 +87,21 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
      */
     public function postAction(Request $request)
     {
-        $resource = $this->requestProcessor->createResource($this->entityName, $request);
+        $resource = $this->getRequestProcessor()->createResource($this->entityName, $request);
         /** @var RecursiveValidator $validator */
         $validator = $this->get('validator');
         $validationErrors = $validator->validate($resource);
         if ($validationErrors->count() > 0) {
-            return $this->responseProcessor->validationErrorView($validationErrors);
+            return $this->getResponseProcessor()->validationErrorView($validationErrors);
         } else {
-            return $this->responseProcessor->getResourceCreationView($resource);
+            $this->getDoctrine()->getManager()->persist($resource);
+            $this->getDoctrine()->getManager()->flush();
+            return $this->getResponseProcessor()->getResourceCreationView($resource);
         }
     }
 
     /**
-     * DELETE a single resource. Soft delete (via deleted property) is not implemented at the moment. Resources are removed completely from the database
+     * DELETE a single resource.
      *
      * @Annotations\View(statusCode=204)
      *
@@ -107,7 +111,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
      */
     public function deleteAction(Request $request, $id)
     {
-        $this->requestProcessor->removeResource($this->entityName, $id);
+        $this->getRequestProcessor()->removeResource($this->entityName, $id);
     }
 
 
@@ -119,10 +123,10 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
      */
     public function patchAction(Request $request, $id)
     {
-        $resource = $this->requestProcessor->getResource($this->entityName, $id);
+        $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
         $actions = $request->request->all();
 
-        $this->requestProcessor->patchResource($this->entityName, $resource, $actions);
+        $this->getRequestProcessor()->patchResource($this->entityName, $resource, $actions);
         $this->patchResource($resource, $actions);
     }
 

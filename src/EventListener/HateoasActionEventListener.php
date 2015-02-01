@@ -8,10 +8,8 @@
 
 namespace uebb\HateoasBundle\EventListener;
 
-use Symfony\Component\Security\Core\SecurityContext;
-use uebb\HateoasBundle\Event\HateoasActionEvent;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use uebb\HateoasBundle\Event\HateoasActionEvent;
 
 
 class HateoasActionEventListener

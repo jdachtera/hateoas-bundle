@@ -2,12 +2,8 @@
 
 namespace uebb\HateoasBundle\Service;
 
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
-use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 
 /**
  * Class LinkListener

@@ -1,5 +1,6 @@
 parameters:
 
+
 services:
 
     uebb.hateoas.doctrine_relation_provider:
@@ -16,7 +17,7 @@ services:
 
     uebb.hateoas.request_processor:
         class: uebb\HateoasBundle\Service\RequestProcessor
-        arguments: [@doctrine.orm.entity_manager, @uebb.hateoas.query_cache, @uebb.hateoas.link_parser, @form.factory, @event.dispatcher, @uebb.hateoas.query_parser]
+        arguments: [@doctrine.orm.entity_manager, @uebb.hateoas.link_parser, @form.factory, @event_dispatcher, @uebb.hateoas.query_parser]
 
     uebb.hateoas.response_processor:
         class: uebb\HateoasBundle\Service\ResponseProcessor
@@ -24,14 +25,9 @@ services:
 
     uebb.hateoas.query_parser:
         class: uebb\HateoasBundle\Service\QueryParser
-        arguments: [@doctrine.orm.entity_manager]
+        arguments: [@service_container, @doctrine.orm.entity_manager]
 
 
-doctrine_cache:
-    providers:
-        hateoas_relation_cache:
-            type: array
-            namespace: hateoas_relation_cache_ns
-        hateoas_query_cache:
-            type: array
-            namespace: hateoas_query_cache_ns
+
+
+

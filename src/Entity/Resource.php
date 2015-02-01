@@ -9,6 +9,7 @@
 namespace uebb\HateoasBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Hateoas\Configuration\Annotation as Hateoas;
 use JMS\Serializer\Annotation as Serializer;
 use Knp\DoctrineBehaviors\Model as ORMBehaviors;
 
@@ -17,7 +18,7 @@ use Knp\DoctrineBehaviors\Model as ORMBehaviors;
  *
  * @ORM\MappedSuperclass
  * @Serializer\ExclusionPolicy("none")
- *
+ * @Hateoas\RelationProvider("uebb.hateoas.doctrine_relation_provider:addRelations")
  * @package uebb\HateoasBundle\Entity
  */
 class Resource implements ResourceInterface

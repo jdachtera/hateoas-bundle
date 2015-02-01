@@ -1,5 +1,5 @@
 <?php
-namespace uebb\HateoasBundle\DependencyInjection\Extension;
+namespace uebb\HateoasBundle\DependencyInjection;
 
 /**
  * Created by PhpStorm.
@@ -10,9 +10,8 @@ namespace uebb\HateoasBundle\DependencyInjection\Extension;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
-
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
 class HateoasExtension extends Extension
 {

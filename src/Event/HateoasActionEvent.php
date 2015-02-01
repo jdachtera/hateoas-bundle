@@ -21,6 +21,11 @@ use uebb\HateoasBundle\Entity\ResourceInterface;
  */
 class HateoasActionEvent extends Event
 {
+
+    const BEFORE = 'before';
+
+    const AFTER = 'after';
+
     /**
      * @var string
      */
