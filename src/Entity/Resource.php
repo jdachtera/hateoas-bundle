@@ -17,8 +17,7 @@ use Knp\DoctrineBehaviors\Model as ORMBehaviors;
  * Class Resource
  *
  * @ORM\MappedSuperclass
- * @Serializer\ExclusionPolicy("none")
- * @Hateoas\RelationProvider("uebb.hateoas.doctrine_relation_provider:addRelations")
+ * @Serializer\ExclusionPolicy("all")
  * @package uebb\HateoasBundle\Entity
  */
 class Resource implements ResourceInterface
@@ -28,12 +27,18 @@ class Resource implements ResourceInterface
         ORMBehaviors\SoftDeletable\SoftDeletable,
         ORMBehaviors\Blameable\Blameable;
 
+    public static function getQueryAbleProperties() {
+        return array('id');
+    }
+
     /**
      * @var string
      *
      * @ORM\Id
      * @ORM\Column(type="guid")
      * @ORM\GeneratedValue(strategy="UUID")
+     *
+     * @Serializer\Expose
      */
     protected $id;
 

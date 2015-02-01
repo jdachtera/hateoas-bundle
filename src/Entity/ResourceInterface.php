@@ -23,6 +23,10 @@ use Symfony\Component\Security\Core\User\UserInterface;
  */
 interface ResourceInterface
 {
+    /**
+     * @return array
+     */
+    public static function getQueryAbleProperties();
 
     /**
      * return string

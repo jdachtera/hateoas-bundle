@@ -8,6 +8,7 @@
 
 namespace uebb\HateoasBundle\Service;
 
+use Doctrine\Common\Inflector\Inflector;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
@@ -68,7 +69,6 @@ class DoctrineRelationProvider
      */
     public function addRelations($object, ClassMetadataInterface $classMetadata)
     {
-
         /** @var \Doctrine\Common\Cache\CacheProvider $cache */
         $cache = $this->container->get('doctrine_cache.providers.uebb_hateoas_relation_cache');
 
@@ -78,7 +78,9 @@ class DoctrineRelationProvider
 
         $relations = array();
 
-        $self_route = 'get_' . strtolower(basename($classMetadata->getName()));
+        $shortName = strtolower(basename(str_replace('\\', '//', $classMetadata->getName())));
+
+        $self_route = $this->findRoute($classMetadata->getName(), 'get');
 
         if ($this->routeExists($self_route)) {
             $relations[] = new Hateoas\Relation(
@@ -107,26 +109,17 @@ class DoctrineRelationProvider
         foreach ($metadata->getAssociationNames() as $associationName) {
             $mapping = $metadata->getAssociationMapping($associationName);
 
-            $resourceParts = explode("\\", $mapping['targetEntity']);
-            $resourceParts[count($resourceParts) - 2] = 'Form';
-            $resourceParts[count($resourceParts) - 1] .= 'Type';
-            $formType = implode("\\", $resourceParts);
-            $type = new $formType();
-
             if ($metadata->isSingleValuedAssociation($associationName)) {
-
-                $route_name = 'get_' . strtolower($type->getName());
-
+                $route_name = $this->findRoute($mapping['targetEntity'], 'get');
                 $args = array('id' => 'expr(object.get' . ucfirst($associationName) . '().getId())');
                 $exclusion = new Hateoas\Exclusion(NULL, NULL, NULL, NULL, 'expr(null === object.get' . ucfirst($associationName) . '())');
-                if (!$this->routeExists($route_name)) {
-                    $route_name = $self_route . '_' . strtolower($associationName);
-                }
             } else {
-                $route_name = $self_route . '_' . strtolower($associationName);
-                $args = array('id' => 'expr(object.getId())');
+
+                $route_name = $this->findRoute($classMetadata->getName(), 'getLinks');
+                $args = array('id' => 'expr(object.getId())', 'rel' => strtolower($associationName));
                 $exclusion = NULL;
             }
+
             if ($this->routeExists($route_name)) {
                 if ($mapping['fetch'] === ClassMetadataInfo::FETCH_EAGER) {
                     $embedded = 'expr(object.get' . ucfirst($associationName) . '())';
@@ -164,6 +157,35 @@ class DoctrineRelationProvider
     protected function routeExists($name)
     {
         return $this->router->getRouteCollection()->get($name) instanceof Route;
+    }
+
+    protected function findRoute($resourceClass, $action)
+    {
+        $controllerClass = $this->findController($resourceClass);
+        if ($controllerClass) {
+            foreach($this->router->getRouteCollection()->all() as $name => /** @var Route $route */$route) {
+                $defaults = $route->getDefaults();
+                $parts = explode('::',$defaults['_controller']);
+                if ($parts[0] === $controllerClass && $parts[1] === $action . 'Action') {
+                    return $name;
+                }
+            }
+        }
+
+    }
+
+    protected function findController($resourceClass)
+    {
+        foreach (get_declared_classes() as $class) {
+            if (is_subclass_of($class, '\\uebb\\HateoasBundle\\Controller\\HateoasController')) {
+                $reflection = new \ReflectionClass($class);
+                $defaults = $reflection->getdefaultProperties();
+                if ($this->entityManager->getClassMetadata($defaults['entityName'])->getName() === $resourceClass) {
+                    return $class;
+                }
+            }
+        }
+        return NULL;
     }
 
 }

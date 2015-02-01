@@ -80,6 +80,20 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     }
 
     /**
+     * @param $id
+     * @param $rel
+     * @param Request $request
+     * @return View
+     */
+    public function getLinksAction($id, $rel, Request $request)
+    {
+        $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
+        /** @var QueryBuilder $queryBuilder */
+        $queryBuilder = $this->getRequestProcessor()->getRelatedResources($this->entityName, $request, $resource, $rel);
+        return $this->getResponseProcessor()->getResourceCollectionView($request, $queryBuilder);
+    }
+
+    /**
      * POST a new resource to the collection
      *
      * @param Request $request

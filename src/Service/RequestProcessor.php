@@ -18,6 +18,7 @@ use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 use uebb\HateoasBundle\Event\HateoasActionEvent;
@@ -135,6 +136,7 @@ class RequestProcessor
         $queryBuilder = $this->getRepository($entityName)->createQueryBuilder('e');
 
         $criteria = $this->queryParser->getCriteria($entityName, $request);
+
         $queryBuilder->addCriteria($criteria);
 
         $this->queryParser->parseFilter($entityName, $request, $queryBuilder);
@@ -142,19 +144,6 @@ class RequestProcessor
         return $queryBuilder;
     }
 
-
-    /**
-     * Get a view for a single related resource. Use this in your subclassed controller's actions
-     *
-     * @param $id - The id of the resource
-     * @param $property - The property of the reosurce
-     * @return View
-     */
-    protected function getRelatedResource($entityName, ResourceInterface $resource, $property)
-    {
-        $accessor = PropertyAccess::createPropertyAccessor();
-        return $accessor->getValue($resource, $property);
-    }
 
     /**
      * Get a single resource by id
@@ -345,7 +334,6 @@ class RequestProcessor
     {
         $resource = $this->getResource($entityName, $id);
         $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'delete', $resource);
-
 
         $this->entityManager->remove($resource);
         $this->entityManager->flush();
