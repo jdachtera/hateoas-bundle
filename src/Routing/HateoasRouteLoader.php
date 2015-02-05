@@ -49,8 +49,8 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
 
             foreach ($metadata->getAssociationNames() as $associationName) {
                 if ($metadata->isCollectionValuedAssociation($associationName)) {
-                    foreach(array('get', 'patch', 'post') as $method) {
-                        if (!$reflection->hasMethod('get' . ucfirst($associationName) . 'Action')) {
+                    foreach(array('get', 'patch') as $method) {
+                        if (!$reflection->hasMethod($method . ucfirst($associationName) . 'Action')) {
                             $resource  = preg_split(
                                 '/([A-Z][^A-Z]*)Controller/', $reflection->getShortName(), -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE
                             );

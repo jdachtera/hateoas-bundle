@@ -20,6 +20,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Validator\ConstraintViolation;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 use uebb\HateoasBundle\Representation\QueryablePaginatedRepresentation;
 
@@ -50,21 +51,26 @@ class ResponseProcessor
      */
     public function getValidationErrorView($validationErrors)
     {
-        $children = array();
+        $errors = array();
 
         foreach ($validationErrors as $violation) {
-            if (!isset($children[$violation->getPropertyPath()])) {
-                $children[$violation->getPropertyPath()] = array('errors' => array());
+            /** @var ConstraintViolation $violation */
+            $violation = $violation;
+            if (!isset($errors[$violation->getPropertyPath()])) {
+                $errors[$violation->getPropertyPath()] = array();
             }
-            $children[$violation->getPropertyPath()]['errors'][] = $violation->getMessage();
+
+            $errors[$violation->getPropertyPath()][] = array(
+                'message' => $violation->getMessage(),
+                'parameters' => $violation->getMessageParameters()
+            );
+
         }
 
         return new View(array(
             'code' => 400,
             'message' => 'Validation Failed',
-            'errors' => array(
-                'children' => $children
-            )
+            'errors' => $errors
         ), 400);
     }
 

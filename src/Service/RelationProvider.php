@@ -84,13 +84,13 @@ class RelationProvider
         if (in_array('uebb\\HateoasBundle\\Entity\\RootInterface', $classImplements)) {
             $relations = $this->addRootRelations($object, $classMetadata);
         } else if (in_array('uebb\\HateoasBundle\\Entity\\ResourceInterface', $classImplements)) {
-            $self_route = $this->findRoute($classMetadata->getName(), 'get');
+            $selfRoute = $this->findRoute($classMetadata->getName(), 'getAction');
 
-            if ($this->routeExists($self_route)) {
+            if ($selfRoute) {
                 $relations[] = new Hateoas\Relation(
                     'self',
                     new Hateoas\Route(
-                        $self_route,
+                        $selfRoute,
                         array('id' => 'expr(object.getId())'),
                         TRUE
                     ),

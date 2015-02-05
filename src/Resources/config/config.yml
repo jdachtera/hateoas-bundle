@@ -5,31 +5,57 @@ services:
 
     uebb.hateoas.relation_provider:
         class: uebb\HateoasBundle\Service\RelationProvider
-        arguments: [@doctrine.orm.entity_manager, @router, @logger, @service_container]
+        arguments:
+            - @doctrine.orm.entity_manager
+            - @router
+            - @logger
+            - @service_container
 
     uebb.hateoas.link_parser:
         class: uebb\HateoasBundle\Service\LinkParser
-        arguments: [@uebb.hateoas.link_resolver]
+        arguments:
+           - @uebb.hateoas.link_resolver
 
     uebb.hateoas.link_resolver:
         class: uebb\HateoasBundle\Service\LinkResolver
-        arguments: [@controller_resolver, @router, @kernel, @event_dispatcher]
+        arguments:
+            - @controller_resolver
+            - @router
+            - @kernel
+            - @event_dispatcher
 
     uebb.hateoas.request_processor:
         class: uebb\HateoasBundle\Service\RequestProcessor
-        arguments: [@doctrine.orm.entity_manager, @uebb.hateoas.link_parser, @form.factory, @event_dispatcher, @uebb.hateoas.query_parser]
+        arguments:
+            - @doctrine.orm.entity_manager
+            - @uebb.hateoas.link_parser
+            - @uebb.hateoas.link_resolver
+            - @form.factory
+            - @event_dispatcher
+            - @uebb.hateoas.query_parser
+            - @jms_serializer
+            - @validator
 
     uebb.hateoas.response_processor:
         class: uebb\HateoasBundle\Service\ResponseProcessor
-        arguments: [@router]
+        arguments:
+            - @router
 
     uebb.hateoas.query_parser:
         class: uebb\HateoasBundle\Service\QueryParser
-        arguments: [@service_container, @doctrine.orm.entity_manager]
+        arguments:
+            - @service_container
+            - @doctrine.orm.entity_manager
+            - @annotation_reader
 
     uebb.hateoas.routing.loader:
         class: uebb\HateoasBundle\Routing\HateoasRouteLoader
-        arguments: [@service_container, @file_locator, @controller_name_converter, @fos_rest.routing.loader.reader.controller, %fos_rest.routing.loader.default_format%]
+        arguments:
+            - @service_container
+            - @file_locator
+            - @controller_name_converter
+            - @fos_rest.routing.loader.reader.controller
+            - %fos_rest.routing.loader.default_format%
         tags:
             - {name: routing.loader }
 

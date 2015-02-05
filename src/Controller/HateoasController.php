@@ -93,6 +93,23 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         return $this->getResponseProcessor()->getResourceCollectionView($request, $queryBuilder);
     }
 
+    public function patchLinkCollection($id, $rel, Request $request)
+    {
+        $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
+
+        $this->getRequestProcessor()->patchResourceCollection($this->entityName, $resource, $rel, $request->request->all());
+
+        $validationErrors = $this->get('validator')->validate($resource);
+
+        if ($validationErrors->count() === 0) {
+            $this->getDoctrine()->getManager()->persist($resource);
+            $this->getDoctrine()->getManager()->flush();
+            return $this->view(NULL, 204);
+        } else {
+            return $this->getResponseProcessor()->getValidationErrorView($validationErrors);
+        }
+    }
+
     /**
      * POST a new resource to the collection
      *
@@ -138,10 +155,17 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function patchAction(Request $request, $id)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
-        $actions = $request->request->all();
+        $this->getRequestProcessor()->patchResource($this->entityName, $resource, $request->request->all());
 
-        $this->getRequestProcessor()->patchResource($this->entityName, $resource, $actions);
-        $this->patchResource($resource, $actions);
+        $validationErrors = $this->get('validator')->validate($resource);
+
+        if ($validationErrors->count() === 0) {
+            $this->getDoctrine()->getManager()->persist($resource);
+            $this->getDoctrine()->getManager()->flush();
+            return $this->view(NULL, 204);
+        } else {
+            return $this->getResponseProcessor()->getValidationErrorView($validationErrors);
+        }
     }
 
 }

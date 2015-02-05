@@ -12,6 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Hateoas\Configuration\Annotation as Hateoas;
 use JMS\Serializer\Annotation as Serializer;
 use Knp\DoctrineBehaviors\Model as ORMBehaviors;
+use uebb\HateoasBundle\Annotation as UebbHateoas;
 
 /**
  * Class Resource
@@ -27,16 +28,14 @@ abstract class Resource implements ResourceInterface
         ORMBehaviors\SoftDeletable\SoftDeletable,
         ORMBehaviors\Blameable\Blameable;
 
-    public static function getQueryAbleProperties() {
-        return array('id');
-    }
-
     /**
      * @var string
      *
      * @ORM\Id
      * @ORM\Column(type="guid")
      * @ORM\GeneratedValue(strategy="UUID")
+     *
+     * @UebbHateoas\QueryAble
      *
      * @Serializer\Expose
      */

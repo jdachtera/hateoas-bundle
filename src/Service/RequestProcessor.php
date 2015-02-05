@@ -15,11 +15,17 @@ use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
+use JMS\Serializer\Serializer;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\PreconditionFailedHttpException;
+use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\Validator\Validator;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 use uebb\HateoasBundle\Event\HateoasActionEvent;
 
@@ -36,6 +42,11 @@ class RequestProcessor
     protected $linkParser;
 
     /**
+     * @var LinkResolver
+     */
+    protected $linkResolver;
+
+    /**
      * @var FormFactoryInterface
      */
     protected $formFactory;
@@ -50,14 +61,27 @@ class RequestProcessor
      */
     protected $queryParser;
 
+    /**
+     * @var Serializer
+     */
+    protected $serializer;
 
-    public function __construct(EntityManagerInterface $entityManager, LinkParser $linkParser, FormFactoryInterface $formFactory, EventDispatcherInterface $dispatcher, QueryParser $queryParser)
+    /**
+     * @var Validator
+     */
+    protected $validator;
+
+
+    public function __construct(EntityManagerInterface $entityManager, LinkParser $linkParser, LinkResolver $linkResolver, FormFactoryInterface $formFactory, EventDispatcherInterface $dispatcher, QueryParser $queryParser, Serializer $serializer, Validator\RecursiveValidator $validator)
     {
         $this->entityManager = $entityManager;
         $this->linkParser = $linkParser;
+        $this->linkResolver = $linkResolver;
         $this->formFactory = $formFactory;
         $this->dispatcher = $dispatcher;
         $this->queryParser = $queryParser;
+        $this->serializer = $serializer;
+        $this->validator = $validator;
     }
 
 
@@ -135,10 +159,7 @@ class RequestProcessor
         /** @var \Doctrine\ORM\Query|\Doctrine\ORM\QueryBuilder $queryBuilder */
         $queryBuilder = $this->getRepository($entityName)->createQueryBuilder('e');
 
-        $criteria = $this->queryParser->getCriteria($entityName, $request);
-
-        $queryBuilder->addCriteria($criteria);
-
+        $this->queryParser->applyQueryParameters($entityName, $request, $queryBuilder);
         $this->queryParser->parseFilter($entityName, $request, $queryBuilder);
 
         return $queryBuilder;
@@ -418,8 +439,6 @@ class RequestProcessor
                     } else {
                         $accessor->setValue($resource, $associationName, $value);
                     }
-                    $value->setUpdated(NULL);
-                    $resource->setUpdated(NULL);
                     $this->entityManager->persist($value);
                 }
             } else {
@@ -452,9 +471,6 @@ class RequestProcessor
                             $collection->add($value);
                         }
                     }
-
-                    $value->setUpdated(NULL);
-                    $resource->setUpdated(NULL);
                     $this->entityManager->persist($value);
                 }
                 //$accessor->setValue($resource, $associationName, $collection);
@@ -479,7 +495,6 @@ class RequestProcessor
         }
 
         $accessor = PropertyAccess::createPropertyAccessor();
-
 
         foreach ($metadata->getAssociationNames() as $associationName) {
             if (!array_key_exists($associationName, $links)) {
@@ -507,8 +522,6 @@ class RequestProcessor
                     throw new PreconditionFailedHttpException("Resource " . $this->entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
                 }
 
-                $value->setUpdated(NULL);
-                $resource->setUpdated(NULL);
                 $this->entityManager->persist($value);
             } else {
                 $collection = $accessor->getValue($resource, $associationName);
@@ -526,7 +539,7 @@ class RequestProcessor
                                 $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'unlink', $resource, $associationName, $value);
                                 $collection->removeElement($resource);
                             } else {
-                                throw new PreconditionFailedHttpException("Resource " . $this->entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
+                                throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
                             }
                         }
                     } else {
@@ -534,15 +547,60 @@ class RequestProcessor
                             $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'unlink', $resource, $associationName, $value);
                             $collection->removeElement($value);
                         } else {
-                            throw new PreconditionFailedHttpException("Resource " . $this->entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
+                            throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
                         }
                     }
-                    $value->setUpdated(NULL);
-                    $resource->setUpdated(NULL);
                     $this->entityManager->persist($value);
                 }
             }
 
+        }
+    }
+
+    public function patchResourceCollection($entityName, $resource, $rel, $actions)
+    {
+        /** @var ClassMetadata $metadata */
+        $metadata = $this->getClassMetadata($entityName);
+
+        $remove_links = array();
+        $add_links = array();
+
+        foreach ($actions as $action) {
+            $path_parts = explode('/', $action['path']);
+            array_shift($path_parts);
+            if ($path_parts[0] === '_links' && $path_parts[1] === 'items') {
+
+                $values = $action['value'];
+                if (!is_array($values)) {
+                    $values = array('href' => $values);
+                }
+
+                // Check if it's a not numeric array
+                if ((bool)count(array_filter(array_keys($values), 'is_string'))) {
+                    $values = array($values);
+                }
+
+                if (($action['op'] === 'add')) {
+                    foreach ($values as $value) {
+                        $add_links[$rel][] = $value['href'];
+                    }
+                } else if ($action['op'] === 'remove') {
+                    foreach ($values as $value) {
+                        $remove_links[$rel][] = $value['href'];
+                    }
+                } else {
+                    throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
+                }
+            }
+        }
+
+        if (count($remove_links)) {
+            $remove_links = $this->linkResolver->resolveResourceLinks($remove_links);
+            $this->removeLinks($entityName, $resource, $remove_links);
+        }
+        if (count($add_links)) {
+            $add_links = $this->linkResolver->resolveResourceLinks($add_links);
+            $this->addLinks($entityName, $resource, $add_links);
         }
     }
 
@@ -565,11 +623,9 @@ class RequestProcessor
             $path_parts = explode('/', $action['path']);
             array_shift($path_parts);
             if ($path_parts[0] === '_links') {
-                if (!$metadata->hasAssociation($path_parts[1])) {
-                    throw new BadRequestHttpException('Resource has no relation named ' . $path_parts[1]);
+                if (!$metadata->hasAssociation($path_parts[1]) || !$metadata->isSingleValuedAssociation($path_parts[1])) {
+                    throw new BadRequestHttpException('Resource has no singular relation named ' . $path_parts[1]);
                 }
-
-                $isSingleValued = $metadata->isSingleValuedAssociation($path_parts[1]);
 
                 $values = $action['value'];
                 if (!is_array($values)) {
@@ -581,7 +637,7 @@ class RequestProcessor
                     $values = array($values);
                 }
 
-                if ($isSingleValued ? ($action['op'] === 'replace' || $action['op'] === 'add') : $action['op'] === 'add') {
+                if (($action['op'] === 'replace' || $action['op'] === 'add')) {
                     foreach ($values as $value) {
                         $add_links[$path_parts[1]][] = $value['href'];
                     }
@@ -592,6 +648,8 @@ class RequestProcessor
                 } else {
                     throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
                 }
+
+
             } else {
                 if (count($path_parts) > 1) {
                     throw new AccessDeniedHttpException('Not allowed to change properties of sub-object');
@@ -625,19 +683,18 @@ class RequestProcessor
             }
         }
 
-        $resolver = $this->get('uebb.hateoas.link_resolver');
+
         if (count($remove_links)) {
-            $remove_links = $resolver->resolveResourceLinks($remove_links);
+            $remove_links = $this->linkResolver->resolveResourceLinks($remove_links);
             $this->removeLinks($entityName, $resource, $remove_links);
         }
         if (count($add_links)) {
-            $add_links = $resolver->resolveResourceLinks($add_links);
+            $add_links = $this->linkResolver->resolveResourceLinks($add_links);
             $this->addLinks($entityName, $resource, $add_links);
         }
 
         $form = $this->getForm($resource);
-        $serializer = $this->container->get('jms_serializer');
-        $currentData = json_decode($serializer->serialize($resource, 'json'));
+        $currentData = json_decode($this->serializer->serialize($resource, 'json'));
 
 
         /**
@@ -656,20 +713,6 @@ class RequestProcessor
         }
 
         $form->submit($data);
-
-        /** @var RecursiveValidator $validator */
-        $validator = $this->get('validator');
-        $validationErrors = $validator->validate($resource);
-
-        if ($validationErrors->count() === 0) {
-            $resource->setUpdated(NULL);
-            $this->entityManager->persist($resource);
-            $this->entityManager->flush();
-
-            return $this->view(NULL, 204);
-        } else {
-            return $this->validationErrorView($validationErrors);
-        }
     }
 
 

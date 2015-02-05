@@ -2,16 +2,21 @@
 
 namespace uebb\HateoasBundle\Service;
 
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
 use Doctrine\Common\Collections\Expr\CompositeExpression;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query\Expr\OrderBy;
+use Doctrine\ORM\Query\Expr\Orx;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class QueryParser
 {
@@ -27,10 +32,17 @@ class QueryParser
      */
     protected $entityManager;
 
-    public function __construct(ContainerInterface $container, EntityManagerInterface $entityManager)
+    /**
+     * @var Reader
+     */
+    protected $annotationReader;
+
+    public function __construct(ContainerInterface $container, EntityManagerInterface $entityManager, Reader $annotationReader)
     {
+
         $this->container = $container;
         $this->entityManager = $entityManager;
+        $this->annotationReader = $annotationReader;
     }
 
     protected function getCache()
@@ -38,79 +50,187 @@ class QueryParser
         return $this->container->get('doctrine_cache.providers.uebb_hateoas_query_cache');
     }
 
-    /**
-     * Construct a Doctrine Criteria object from a Symfony web request
-     *
-     * @param string $entityName - The entity name to construct the query for
-     * @param Request $request - The request
-     * @return Criteria
-     */
-    public function getCriteria($entityName, Request $request)
+    public function getQueryAbleProperties($entityName)
     {
+        $reflectionClass = new \ReflectionClass($this->entityManager->getMetadataFactory()->getMetadataFor($entityName)->getName());
 
-        $cache_identifier = json_encode(array(
-            'entityName' => $entityName,
-            'request' => $request->query->all()
-        ));
+        $properties = array();
 
-        if ($this->getCache()->contains($cache_identifier)) {
-            return $this->getCache()->fetch($cache_identifier);
+        foreach($reflectionClass->getProperties() as $property) {
+            /** @var \ReflectionProperty $property */
+            $property = $property;
+            if ($this->annotationReader->getPropertyAnnotation($property, 'uebb\HateoasBundle\Annotation\QueryAble')) {
+                $properties[] = $property->getName();
+            }
         }
+        return $properties;
+    }
 
-        $criteria = new Criteria();
-        $constraints = $this->parseQuery($request->query->get('where'));
+    /**
+     * @param $entityName
+     * @param QueryBuilder $queryBuilder
+     * @param $where
+     * @return QueryBuilder
+     */
+    public function applyWhere($entityName, QueryBuilder $queryBuilder, $where, $maxDepth)
+    {
+        // TODO: Check if everything is escaped properly
+
+        $constraints = $this->parseQuery($where);
 
         /** @var ClassMetadata $metadata */
         $metadata = $this->getClassMetadata($entityName);
         $entityClass = $metadata->getName();
 
+        $rootAliases = $queryBuilder->getRootAliases();
+
+        $joinedAliases = array();
+
         foreach ($constraints as $constraint) {
-            if (in_array($constraint['property'], $entityClass::getQueryableProperties())) {
-                $expression = new Comparison($constraint['property'], $constraint['comparator'], $constraint['value']);
-                if (strtoupper($constraint['connector']) === 'OR') {
-                    $criteria->orWhere($expression);
-                } else {
-                    $criteria->andWhere($expression);
-                }
+            $propertyParts = explode('.', $constraint['property']);
+
+            $joinedAliases = $this->deepJoinProperties($entityName, $queryBuilder, $propertyParts, $joinedAliases, $maxDepth);
+
+            $expression = new \Doctrine\ORM\Query\Expr\Comparison(
+                (count($propertyParts) === 1 ? ($rootAliases[0] . '.') : '') . implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1],
+                $constraint['comparator'],
+                $this->entityManager->getConnection()->quote($constraint['value'])
+            );
+
+            if (strtoupper($constraint['connector']) === 'OR') {
+                $queryBuilder->orWhere($expression);
             } else {
-                throw new AccessDeniedHttpException('You are not allowed to query the property ' . $constraint['property'] . ' of the entity type ' . $entityName, NULL, 403);
+                $queryBuilder->andWhere($expression);
             }
+
+
         }
 
-        $search = $request->query->get('search');
+        return $joinedAliases;
+    }
+
+
+    public function deepJoinProperties($entityName, QueryBuilder $queryBuilder, $propertyParts, $joinedAliases = array(), $maxDepth = TRUE)
+    {
+        $metadata = $this->getClassMetadata($entityName);
+        $rootAliases = $queryBuilder->getRootAliases();
+
+        for ($i = 0; $i < count($propertyParts); $i++) {
+
+            if ($maxDepth !== TRUE && $maxDepth < $i) {
+                throw new AccessDeniedHttpException('You are not allowed to query deeper than ' . $maxDepth . ' properties', NULL, 403);
+            }
+
+            if (!in_array($propertyParts[$i], $this->getQueryAbleProperties($metadata->getName()))) {
+                throw new AccessDeniedHttpException('You are not allowed to query the property ' . $propertyParts[$i] . ' of the entity type ' . $metadata->getName(), NULL, 403);
+            }
+
+
+            if ($i < count($propertyParts) -1) {
+                $metadata = $this->getClassMetadata($metadata->getAssociationTargetClass($propertyParts[$i]));
+            } else if ($i === count($propertyParts) -1 && !$metadata->hasField($propertyParts[$i])) {
+                throw new BadRequestHttpException($propertyParts[$i] . ' is not a scalar field of entity type ' . $metadata->getName(), NULL, 400);
+            }
+
+            if ($i > 0) {
+                $alias = implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, $i)));
+                if (!in_array($alias, $joinedAliases)) {
+                    $queryBuilder->leftJoin(
+                        implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, $i - 1))) . '.' . $propertyParts[$i -1],
+                        $alias
+                    );
+
+                    $joinedAliases[] = $alias;
+                }
+            }
+
+
+        }
+
+        return $joinedAliases;
+    }
+
+    /**
+     * @param $entityName
+     * @param QueryBuilder $queryBuilder
+     * @param $search
+     * @return QueryBuilder
+     */
+    public function applySearch($entityName, QueryBuilder $queryBuilder, $search)
+    {
+        /** @var ClassMetadata $metadata */
+        $metadata = $this->getClassMetadata($entityName);
+        $entityClass = $metadata->getName();
+
+        $rootAliases = $queryBuilder->getRootAliases();
+
         if ($search !== NULL && trim($search) !== '') {
             $expressions = array();
             foreach ($metadata->getFieldNames() as $field) {
-                if (in_array($field, $entityClass::getQueryableProperties())) {
-                    $expressions[] = $criteria->expr()->contains($field, $search);
+                if (in_array($field, $this->getQueryAbleProperties($entityName))) {
+
+                    $expressions[] = $queryBuilder->expr()->like(
+                        $rootAliases[0] . '.' . $field,
+                        $this->entityManager->getConnection()->quote('%' . $search . '%')
+                    );
                 }
             }
             if (count($expressions)) {
-                $criteria->andWhere(new CompositeExpression(CompositeExpression::TYPE_OR, $expressions));
+
+                $queryBuilder->andWhere(new Orx($expressions));
             }
         }
+    }
 
-        $order = $request->query->get('order');
+    /**
+     * @param $entityName
+     * @param QueryBuilder $queryBuilder
+     * @param $order
+     * @return QueryBuilder
+     */
+    public function applyOrder($entityName, QueryBuilder $queryBuilder, $order, $joinedAliases = array(), $maxDepth)
+    {
+        /** @var ClassMetadata $metadata */
+        $metadata = $this->getClassMetadata($entityName);
+        $entityClass = $metadata->getName();
+
+        $rootAliases = $queryBuilder->getRootAliases();
+
         /**
          * Parse order string: name ASC, age DESC
          */
         if ($order !== NULL && trim($order) !== '') {
             $orders = array();
             $orderStrings = explode(',', $order);
+
             foreach ($orderStrings as $orderString) {
                 $parts = preg_split('/\s+/', trim($orderString));
-                $direction = count($parts) > 1 ? $parts[1] : Criteria::ASC;
-                if ($direction !== Criteria::ASC && $direction !== Criteria::DESC) {
-                    $direction = Criteria::ASC;
+
+                $direction = count($parts) > 1 ? strtoupper($parts[1]) : 'ASC';
+
+                $propertyParts = explode('.', $parts[0]);
+
+                $joinedAliases = $this->deepJoinProperties($entityName, $queryBuilder, $propertyParts, $joinedAliases);
+
+                if ($direction !==  'ASC' && $direction !== 'DESC') {
+                    $direction = 'ASC';
                 }
-                $orders[$parts[0]] = $direction;
+                $queryBuilder->addOrderBy(new OrderBy(
+                    (count($propertyParts) === 1 ? ($rootAliases[0] . '.') : '') . implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1],
+                    $direction
+                ));
             }
-            $criteria->orderBy($orders);
         }
+    }
 
-        $this->getCache()->save($cache_identifier, $criteria);
+    public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = TRUE)
+    {
+        $joinedAliases = $this->applyWhere($entityName, $queryBuilder, $request->query->get('where'), $maxDepth);
+        $this->applySearch($entityName, $queryBuilder, $request->query->get('search'));
 
-        return $criteria;
+        $this->applyOrder($entityName, $queryBuilder, $request->query->get('order'), $joinedAliases, $maxDepth);
+
+        return $queryBuilder;
     }
 
     /**
@@ -124,8 +244,8 @@ class QueryParser
         if (!is_string($whereString)) {
             return array();
         }
-        $pattern_connections = '/((?P<connector>AND|OR)\s+)?(?P<comparison>([a-zA-Z]+)\s*((<|=|>|!=|<=|>=|CONTAINS))\s*(("([^"])*")|(\d+\.\d+)|(\d+)|(NULL)))\s*/';
-        $pattern_comparison = '/(?P<property>[a-zA-Z]+)\s*(?P<comparator>(<|=|>|!=|<=|>=|CONTAINS))\s*(?P<value>("([^"])*")|(\d+\.\d+)|(\d+)|(NULL))/';
+        $pattern_connections = '/((?P<connector>AND|OR)\s+)?(?P<comparison>([a-zA-Z.]+)\s*((<|=|>|!=|<=|>=|CONTAINS))\s*(("([^"])*")|(\d+\.\d+)|(\d+)|(NULL)))\s*/';
+        $pattern_comparison = '/(?P<property>[a-zA-Z.]+)\s*(?P<comparator>(<|=|>|!=|<=|>=|CONTAINS))\s*(?P<value>("([^"])*")|(\d+\.\d+)|(\d+)|(NULL))/';
         $pattern_float = '/\./';
 
         $constraints = array();
@@ -147,6 +267,7 @@ class QueryParser
             if ($comparison['comparator'] === '!=') {
                 $comparison['comparator'] = '<>';
             }
+
             $constraints[] = array(
                 'connector' => $connector,
                 'property' => $comparison['property'],
@@ -182,7 +303,7 @@ class QueryParser
             foreach ($metadata->getAssociationMappings() as $name => $mapping) {
                 $values = (isset($filter_by[$name]) && trim($filter_by[$name]) !== '') ? explode(',', $filter_by[$name]) : false;
                 if ($values) {
-                    if (!in_array($name, $entityClass::getQueryableProperties())) {
+                    if (!in_array($name, $this->getQueryAbleProperties($entityClass))) {
                         throw new AccessDeniedHttpException('You are not allowed to query the relation ' . $name . ' of the entity type ' . $entityName, NULL, 403);
                     }
                     $in = array();
