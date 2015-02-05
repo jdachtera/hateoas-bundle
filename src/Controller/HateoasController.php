@@ -80,12 +80,12 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     }
 
     /**
-     * @param $id
-     * @param $rel
+     * @param int $id
+     * @param string $rel
      * @param Request $request
      * @return View
      */
-    public function getLinksAction($id, $rel, Request $request)
+    public function getLinkcollection($id, $rel, Request $request)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
         /** @var QueryBuilder $queryBuilder */
@@ -143,6 +143,5 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         $this->getRequestProcessor()->patchResource($this->entityName, $resource, $actions);
         $this->patchResource($resource, $actions);
     }
-
 
 }

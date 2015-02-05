@@ -1,5 +1,5 @@
 {
-  "name": "jdachtera/hateoas-bundle",
+  "name": "uebb/hateoas-bundle",
   "require": {
     "symfony/form": "~2.6",
     "symfony/validator": "~2.6",

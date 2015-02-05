@@ -3,8 +3,8 @@ parameters:
 
 services:
 
-    uebb.hateoas.doctrine_relation_provider:
-        class: uebb\HateoasBundle\Service\DoctrineRelationProvider
+    uebb.hateoas.relation_provider:
+        class: uebb\HateoasBundle\Service\RelationProvider
         arguments: [@doctrine.orm.entity_manager, @router, @logger, @service_container]
 
     uebb.hateoas.link_parser:
@@ -27,6 +27,11 @@ services:
         class: uebb\HateoasBundle\Service\QueryParser
         arguments: [@service_container, @doctrine.orm.entity_manager]
 
+    uebb.hateoas.routing.loader:
+        class: uebb\HateoasBundle\Routing\HateoasRouteLoader
+        arguments: [@service_container, @file_locator, @controller_name_converter, @fos_rest.routing.loader.reader.controller, %fos_rest.routing.loader.default_format%]
+        tags:
+            - {name: routing.loader }
 
 
 

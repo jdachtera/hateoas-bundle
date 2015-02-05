@@ -20,7 +20,7 @@ use Knp\DoctrineBehaviors\Model as ORMBehaviors;
  * @Serializer\ExclusionPolicy("all")
  * @package uebb\HateoasBundle\Entity
  */
-class Resource implements ResourceInterface
+abstract class Resource implements ResourceInterface
 {
 
     use ORMBehaviors\Timestampable\Timestampable,
