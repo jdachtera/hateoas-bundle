@@ -12,11 +12,14 @@ namespace uebb\HateoasBundle\Service;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
 use Doctrine\Common\Util\ClassUtils;
+use Doctrine\Common\Util\Debug;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use JMS\Serializer\Serializer;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormFactory;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -300,9 +303,8 @@ class RequestProcessor
      * @param ResourceInterface $resource
      * @return Form
      */
-    protected function getForm($resource)
+    protected function getForm(ResourceInterface $resource)
     {
-
         $resourceClassName = ClassUtils::getClass($resource);
         $resourceParts = explode("\\", $resourceClassName);
         $resourceParts[count($resourceParts) - 2] = 'Form';
@@ -561,8 +563,8 @@ class RequestProcessor
         /** @var ClassMetadata $metadata */
         $metadata = $this->getClassMetadata($entityName);
 
-        $remove_links = array();
-        $add_links = array();
+        $linksToRemove = array();
+        $linksToAdd = array();
 
         foreach ($actions as $action) {
             $path_parts = explode('/', $action['path']);
@@ -579,13 +581,17 @@ class RequestProcessor
                     $values = array($values);
                 }
 
+                if (!isset($action['op'])) {
+                    throw new \InvalidArgumentException('No operation given.');
+                }
+
                 if (($action['op'] === 'add')) {
                     foreach ($values as $value) {
-                        $add_links[$rel][] = $value['href'];
+                        $linksToAdd[$rel][] = $value['href'];
                     }
                 } else if ($action['op'] === 'remove') {
                     foreach ($values as $value) {
-                        $remove_links[$rel][] = $value['href'];
+                        $linksToRemove[$rel][] = $value['href'];
                     }
                 } else {
                     throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
@@ -593,14 +599,8 @@ class RequestProcessor
             }
         }
 
-        if (count($remove_links)) {
-            $remove_links = $this->linkResolver->resolveResourceLinks($remove_links);
-            $this->removeLinks($entityName, $resource, $remove_links);
-        }
-        if (count($add_links)) {
-            $add_links = $this->linkResolver->resolveResourceLinks($add_links);
-            $this->addLinks($entityName, $resource, $add_links);
-        }
+        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToRemove));
+        $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
     }
 
     public function patchResource($entityName, $resource, array $actions)
@@ -612,43 +612,30 @@ class RequestProcessor
 
         $accessor = PropertyAccess::createPropertyAccessor();
 
-        $remove_links = array();
-        $add_links = array();
+        $linksToRemove = array();
+        $linksToAdd = array();
 
         $data = array();
 
-
         foreach ($actions as $action) {
+            if (!isset($action['op'])) {
+                throw new \InvalidArgumentException('No operation given.');
+            }
+
             $path_parts = explode('/', $action['path']);
             array_shift($path_parts);
             if ($path_parts[0] === '_links') {
+
                 if (!$metadata->hasAssociation($path_parts[1]) || !$metadata->isSingleValuedAssociation($path_parts[1])) {
                     throw new BadRequestHttpException('Resource has no singular relation named ' . $path_parts[1]);
                 }
-
-                $values = $action['value'];
-                if (!is_array($values)) {
-                    $values = array('href' => $values);
-                }
-
-                // Check if it's a not numeric array
-                if ((bool)count(array_filter(array_keys($values), 'is_string'))) {
-                    $values = array($values);
-                }
-
-                if (($action['op'] === 'replace' || $action['op'] === 'add')) {
-                    foreach ($values as $value) {
-                        $add_links[$path_parts[1]][] = $value['href'];
-                    }
+                if ($action['op'] === 'replace' || $action['op'] === 'add') {
+                    $linksToAdd[$path_parts[1]][] = $action['value']['href'];
                 } else if ($action['op'] === 'remove') {
-                    foreach ($values as $value) {
-                        $remove_links[$path_parts[1]][] = $value['href'];
-                    }
+                    $linksToRemove[$path_parts[1]][] = $action['value']['href'];
                 } else {
                     throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
                 }
-
-
             } else {
                 if (count($path_parts) > 1) {
                     throw new AccessDeniedHttpException('Not allowed to change properties of sub-object');
@@ -683,35 +670,11 @@ class RequestProcessor
         }
 
 
-        if (count($remove_links)) {
-            $remove_links = $this->linkResolver->resolveResourceLinks($remove_links);
-            $this->removeLinks($entityName, $resource, $remove_links);
-        }
-        if (count($add_links)) {
-            $add_links = $this->linkResolver->resolveResourceLinks($add_links);
-            $this->addLinks($entityName, $resource, $add_links);
-        }
+        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToRemove));
+        $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
 
         $form = $this->getForm($resource);
-        $currentData = json_decode($this->serializer->serialize($resource, 'json'));
-
-
-        /**
-         * Fetch current field data
-         */
-        foreach ($metadata->getFieldNames() as $property) {
-            if ($form->has($property) && !array_key_exists($property, $data)) {
-                try {
-                    $data[$property] = $accessor->getValue($currentData, $property);
-                } catch (NoSuchPropertyException $e) {
-                    $data[$property] = $accessor->getValue($resource, $property);
-                } catch (NoSuchPropertyException $e) {
-                }
-
-            }
-        }
-
-        $form->submit($data);
+        $form->submit($data, FALSE);
     }
 
 

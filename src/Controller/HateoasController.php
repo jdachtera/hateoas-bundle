@@ -59,6 +59,14 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     }
 
     /**
+     * @return RecursiveValidator
+     */
+    protected function getValidator()
+    {
+        return $this->get('validator');
+    }
+
+    /**
      * Represents the collection of all resources of the entity type
      *
      * @param Request $request
@@ -83,7 +91,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
 
-        return new ResourceView($this->get('router'), $request);
+        return new ResourceView($this->get('router'), $resource);
     }
 
     /**
@@ -105,7 +113,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
         $this->getRequestProcessor()->patchResourceCollection($this->entityName, $resource, $rel, $request->request->all());
-        $validationErrors = $this->get('validator')->validate($resource);
+        $validationErrors = $this->getValidator()->validate($resource);
 
         if ($validationErrors->count() > 0) {
             return new ValidationErrorView($this->get('router'), $validationErrors);
@@ -125,9 +133,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function postAction(Request $request)
     {
         $resource = $this->getRequestProcessor()->createResource($this->entityName, $request);
-        /** @var RecursiveValidator $validator */
-        $validator = $this->get('validator');
-        $validationErrors = $validator->validate($resource);
+        $validationErrors = $this->getValidator()->validate($resource);
 
         if ($validationErrors->count() > 0) {
             return new ValidationErrorView($this->get('router'), $validationErrors);
@@ -163,16 +169,17 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function patchAction(Request $request, $id)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
+
         $this->getRequestProcessor()->patchResource($this->entityName, $resource, $request->request->all());
 
-        $validationErrors = $this->get('validator')->validate($resource);
+        $validationErrors = $this->getValidator()->validate($resource);
 
-        if ($validationErrors->count() === 0) {
+        if ($validationErrors->count() > 0) {
+            return new ValidationErrorView($this->get('router'), $validationErrors);
+        } else {
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
             return new ResourcePatchView($this->get('router'), $resource);
-        } else {
-            return new ValidationErrorView($this->get('router'), $validationErrors);
         }
     }
 

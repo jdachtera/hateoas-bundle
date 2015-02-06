@@ -64,6 +64,9 @@ class LinkResolver
      */
     public function resolveResourceLinks($links)
     {
+        if (!count($links)) {
+            return array();
+        }
 
         // The controller resolver needs a request to resolve the controller.
         $stubRequest = new Request();

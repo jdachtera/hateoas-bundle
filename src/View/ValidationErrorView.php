@@ -2,6 +2,7 @@
 namespace uebb\HateoasBundle\View;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 
 /**
  * Created by PhpStorm.
@@ -13,9 +14,9 @@ use Symfony\Component\Validator\ConstraintViolation;
 class ValidationErrorView extends View{
     /**
      * @param RouterInterface $router
-     * @param array $validationErrors
+     * @param ConstraintViolationListInterface $validationErrors
      */
-    public function __construct(RouterInterface $router, array $validationErrors)
+    public function __construct(RouterInterface $router, ConstraintViolationListInterface $validationErrors)
     {
         parent::__construct($router);
 

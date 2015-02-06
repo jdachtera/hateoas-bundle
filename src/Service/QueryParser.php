@@ -50,20 +50,11 @@ class QueryParser
         return $this->container->get('doctrine_cache.providers.uebb_hateoas_query_cache');
     }
 
-    public function getQueryAbleProperties($entityName)
+    public function getPropertyAnnotation($entityName, $propertyName, $annotation)
     {
         $reflectionClass = new \ReflectionClass($this->entityManager->getMetadataFactory()->getMetadataFor($entityName)->getName());
-
-        $properties = array();
-
-        foreach($reflectionClass->getProperties() as $property) {
-            /** @var \ReflectionProperty $property */
-            $property = $property;
-            if ($this->annotationReader->getPropertyAnnotation($property, 'uebb\HateoasBundle\Annotation\QueryAble')) {
-                $properties[] = $property->getName();
-            }
-        }
-        return $properties;
+        $propertyReflection = $reflectionClass->getProperty($propertyName);
+        return $this->annotationReader->getPropertyAnnotation($propertyReflection, $annotation);
     }
 
     /**
@@ -130,12 +121,19 @@ class QueryParser
 
         for ($i = 0; $i < count($propertyParts); $i++) {
 
-            if ($maxDepth !== TRUE && $maxDepth < $i) {
-                throw new AccessDeniedHttpException('You are not allowed to query deeper than ' . $maxDepth . ' properties', NULL, 403);
+            /** @var \uebb\HateoasBundle\Annotation\QueryAble $propertyAnnotation */
+            $propertyAnnotation = $this->getPropertyAnnotation($metadata->getName(), $propertyParts[$i], 'uebb\HateoasBundle\Annotation\QueryAble');
+
+            if (!$propertyAnnotation) {
+                throw new AccessDeniedHttpException('You are not allowed to query the property ' . $propertyParts[$i] . ' of the entity type ' . $metadata->getName(), NULL, 403);
             }
 
-            if (!in_array($propertyParts[$i], $this->getQueryAbleProperties($metadata->getName()))) {
-                throw new AccessDeniedHttpException('You are not allowed to query the property ' . $propertyParts[$i] . ' of the entity type ' . $metadata->getName(), NULL, 403);
+            if ($propertyAnnotation->maxDepth !== NULL) {
+                $maxDepth = $i + $propertyAnnotation->maxDepth;
+            }
+
+            if ($maxDepth !== TRUE && intval($maxDepth) < $i) {
+                throw new AccessDeniedHttpException('You are not allowed to query deeper than ' . $maxDepth . ' properties', NULL, 403);
             }
 
 
