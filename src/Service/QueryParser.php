@@ -91,11 +91,24 @@ class QueryParser
 
             $joinedAliases = $this->deepJoinProperties($entityName, $queryBuilder, $propertyParts, $joinedAliases, $maxDepth);
 
-            $expression = new \Doctrine\ORM\Query\Expr\Comparison(
-                (count($propertyParts) === 1 ? ($rootAliases[0] . '.') : '') . implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1],
-                $constraint['comparator'],
-                $this->entityManager->getConnection()->quote($constraint['value'])
-            );
+            if (count($propertyParts) === 1) {
+                $field = $rootAliases[0] . '.' . $propertyParts[0];
+            }  else {
+                $field = implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1];
+            }
+
+            if ($constraint['value'] === NULL) {
+                $expression = $constraint['comparator'] === '=' ? $queryBuilder->expr()->isNull($field) : $queryBuilder->expr()->isNotNull($field);
+            } else {
+                $expression = new \Doctrine\ORM\Query\Expr\Comparison(
+                    $field,
+                    $constraint['comparator'],
+                    $this->entityManager->getConnection()->quote($constraint['value'])
+                );
+
+            }
+
+
 
             if (strtoupper($constraint['connector']) === 'OR') {
                 $queryBuilder->orWhere($expression);
@@ -128,7 +141,7 @@ class QueryParser
 
             if ($i < count($propertyParts) -1) {
                 $metadata = $this->getClassMetadata($metadata->getAssociationTargetClass($propertyParts[$i]));
-            } else if ($i === count($propertyParts) -1 && !$metadata->hasField($propertyParts[$i])) {
+            } else if ($i === count($propertyParts) -1 && !$metadata->hasField($propertyParts[$i]) && !$metadata->isSingleValuedAssociation($propertyParts[$i])) {
                 throw new BadRequestHttpException($propertyParts[$i] . ' is not a scalar field of entity type ' . $metadata->getName(), NULL, 400);
             }
 
@@ -223,6 +236,13 @@ class QueryParser
         }
     }
 
+    /**
+     * @param $entityName
+     * @param Request $request
+     * @param QueryBuilder $queryBuilder
+     * @param bool $maxDepth
+     * @return QueryBuilder
+     */
     public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = TRUE)
     {
         $joinedAliases = $this->applyWhere($entityName, $queryBuilder, $request->query->get('where'), $maxDepth);
@@ -287,72 +307,5 @@ class QueryParser
     protected function getClassMetadata($entityName)
     {
         return $this->entityManager->getMetadataFactory()->getMetadataFor($entityName);
-    }
-
-    public function parseFilter($entityName, Request $request, QueryBuilder $queryBuilder)
-    {
-        /** @var ClassMetadata $metadata */
-        $metadata = $this->getClassMetadata($entityName);
-
-        $entityClass = $metadata->getName();
-
-        $filter_by = $request->get('filter');
-
-        // Easily query by related ids via filter[...property] = !1,2...
-        if (is_array($filter_by)) {
-            foreach ($metadata->getAssociationMappings() as $name => $mapping) {
-                $values = (isset($filter_by[$name]) && trim($filter_by[$name]) !== '') ? explode(',', $filter_by[$name]) : false;
-                if ($values) {
-                    if (!in_array($name, $this->getQueryAbleProperties($entityClass))) {
-                        throw new AccessDeniedHttpException('You are not allowed to query the relation ' . $name . ' of the entity type ' . $entityName, NULL, 403);
-                    }
-                    $in = array();
-                    $not_in = array();
-
-                    foreach ($values as $value) {
-                        if (strlen($value)) {
-                            if ($value[0] === '!') {
-                                $not_in[] = intval(substr($value, 1), 10);
-                            } else {
-                                $in[] = intval($value, 10);
-                            }
-                        }
-                    }
-
-                    if (count($in)) {
-                        $queryBuilder->innerJoin('e.' . $name, $name);
-                        $queryBuilder->andWhere($name . '.id IN (:filter_by_in_' . $name . ')');
-                        $queryBuilder->setParameter('filter_by_in_' . $name, $in);
-                    }
-                    // not in needs an exists subquery
-                    if (count($not_in)) {
-                        $mapping = $metadata->getAssociationMapping($name);
-
-                        /** @var \Doctrine\ORM\Query|\Doctrine\ORM\QueryBuilder $subquery */
-                        $subquery = $this->getRepository($mapping['targetEntity'])->createQueryBuilder('e_' . $mapping['fieldName']);
-                        $reverseProperty = ($mapping['isOwningSide'] ? $mapping['inversedBy'] : $mapping['mappedBy']);
-                        $subquery->leftJoin('e_' . $mapping['fieldName'] . '.' . $reverseProperty, 'e_' . $mapping['fieldName'] . '_' . $reverseProperty);
-
-                        $subquery->where(
-                            $subquery->expr()->andX(
-                                $subquery->expr()->eq('e_' . $mapping['fieldName'] . '_' . $reverseProperty . '.id', 'e.id'),
-                                $subquery->expr()->in('e_' . $mapping['fieldName'] . '.id', $not_in)
-                            )
-                        );
-
-                        $queryBuilder->andWhere(
-                            $queryBuilder->expr()->andX(
-                                $queryBuilder->expr()->not(
-                                    $queryBuilder->expr()->exists($subquery->getDQL())
-                                )
-                            )
-
-                        );
-
-                    }
-                }
-
-            }
-        }
     }
 }

@@ -18,6 +18,12 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Validator\Validator\RecursiveValidator;
 use uebb\HateoasBundle\Service\RequestProcessor;
 use uebb\HateoasBundle\Service\ResponseProcessor;
+use uebb\HateoasBundle\View\ResourceCollectionView;
+use uebb\HateoasBundle\View\ResourceCreationView;
+use uebb\HateoasBundle\View\ResourceDeleteView;
+use uebb\HateoasBundle\View\ResourcePatchView;
+use uebb\HateoasBundle\View\ResourceView;
+use uebb\HateoasBundle\View\ValidationErrorView;
 
 
 /**
@@ -63,7 +69,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         /** @var QueryBuilder $queryBuilder */
         $queryBuilder = $this->getRequestProcessor()->getResources($this->entityName, $request);
 
-        return $this->getResponseProcessor()->getResourceCollectionView($request, $queryBuilder);
+        return new ResourceCollectionView($this->get('router'), $request, $queryBuilder);
     }
 
     /**
@@ -76,7 +82,8 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function getAction($id, Request $request)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
-        return $this->getResponseProcessor()->getResourceView($request, $resource);
+
+        return new ResourceView($this->get('router'), $request);
     }
 
     /**
@@ -90,23 +97,22 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
         /** @var QueryBuilder $queryBuilder */
         $queryBuilder = $this->getRequestProcessor()->getRelatedResources($this->entityName, $request, $resource, $rel);
-        return $this->getResponseProcessor()->getResourceCollectionView($request, $queryBuilder);
+
+        return new ResourceCollectionView($this->get('router'), $request, $queryBuilder);
     }
 
     public function patchLinkCollection($id, $rel, Request $request)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
-
         $this->getRequestProcessor()->patchResourceCollection($this->entityName, $resource, $rel, $request->request->all());
-
         $validationErrors = $this->get('validator')->validate($resource);
 
-        if ($validationErrors->count() === 0) {
+        if ($validationErrors->count() > 0) {
+            return new ValidationErrorView($this->get('router'), $validationErrors);
+        } else {
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
-            return $this->view(NULL, 204);
-        } else {
-            return $this->getResponseProcessor()->getValidationErrorView($validationErrors);
+            return new ResourcePatchView($this->get('router'), $resource);
         }
     }
 
@@ -122,12 +128,13 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         /** @var RecursiveValidator $validator */
         $validator = $this->get('validator');
         $validationErrors = $validator->validate($resource);
+
         if ($validationErrors->count() > 0) {
-            return $this->getResponseProcessor()->validationErrorView($validationErrors);
+            return new ValidationErrorView($this->get('router'), $validationErrors);
         } else {
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
-            return $this->getResponseProcessor()->getResourceCreationView($resource);
+            return new ResourceCreationView($this->get('router'), $resource);
         }
     }
 
@@ -143,6 +150,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function deleteAction(Request $request, $id)
     {
         $this->getRequestProcessor()->removeResource($this->entityName, $id);
+        return new ResourceDeleteView($this->get('router'));
     }
 
 
@@ -162,9 +170,9 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
         if ($validationErrors->count() === 0) {
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
-            return $this->view(NULL, 204);
+            return new ResourcePatchView($this->get('router'), $resource);
         } else {
-            return $this->getResponseProcessor()->getValidationErrorView($validationErrors);
+            return new ValidationErrorView($this->get('router'), $validationErrors);
         }
     }
 

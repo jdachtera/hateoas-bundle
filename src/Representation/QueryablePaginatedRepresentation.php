@@ -46,13 +46,6 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
      */
     private $order;
     /**
-     * @var array
-     *
-     * @Serializer\Expose
-     * @Serializer\XmlAttribute
-     */
-    private $filter;
-    /**
      * @var string
      */
     private $whereParameterName;
@@ -64,10 +57,6 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
      * @var string
      */
     private $orderParameterName;
-    /**
-     * @var string
-     */
-    private $filterParameterName;
 
     public function __construct(
         $inline,
@@ -82,11 +71,9 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
         $where,
         $search,
         $order,
-        $filter,
         $whereParameterName = null,
         $searchParameterName = null,
-        $orderParameterName = null,
-        $filterParameterName = null
+        $orderParameterName = null
     )
     {
         parent::__construct($inline, $route, $parameters, $page, $limit, $pages, $pageParameterName, $limitParameterName, $absolute);
@@ -99,8 +86,6 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
         $this->order = $order;
         $this->orderParameterName = $orderParameterName ?: 'order';
 
-        $this->filter = $filter;
-        $this->filterParameterName = $filterParameterName ?: 'filter';
     }
 
     /**
@@ -108,13 +93,12 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
      * @param  null $limit
      * @return array
      */
-    public function getParameters($page = null, $limit = null, $where = null, $search = null, $order = null, $filter = null)
+    public function getParameters($page = null, $limit = null, $where = null, $search = null, $order = null)
     {
         $parameters = parent::getParameters($page, $limit);
         $parameters[$this->whereParameterName] = null == $where ? $this->getWhere() : $where;
         $parameters[$this->searchParameterName] = null == $search ? $this->getSearch() : $search;
         $parameters[$this->orderParameterName] = null == $order ? $this->getOrder() : $order;
-        $parameters[$this->filterParameterName] = null == $filter ? $this->getFilter() : $filter;
         return $parameters;
     }
 
@@ -164,38 +148,6 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
     public function getOrderParameterName()
     {
         return $this->orderParameterName;
-    }
-
-    /**
-     * @param mixed $filter
-     */
-    public function setFilter($filter)
-    {
-        $this->filter = $filter;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getFilter()
-    {
-        return $this->filter;
-    }
-
-    /**
-     * @param string $filterParameterName
-     */
-    public function setFilterParameterName($filterParameterName)
-    {
-        $this->filterParameterName = $filterParameterName;
-    }
-
-    /**
-     * @return string
-     */
-    public function getFilterParameterName()
-    {
-        return $this->filterParameterName;
     }
 
 

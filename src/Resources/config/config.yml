@@ -36,11 +36,6 @@ services:
             - @jms_serializer
             - @validator
 
-    uebb.hateoas.response_processor:
-        class: uebb\HateoasBundle\Service\ResponseProcessor
-        arguments:
-            - @router
-
     uebb.hateoas.query_parser:
         class: uebb\HateoasBundle\Service\QueryParser
         arguments:

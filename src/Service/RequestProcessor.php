@@ -160,7 +160,6 @@ class RequestProcessor
         $queryBuilder = $this->getRepository($entityName)->createQueryBuilder('e');
 
         $this->queryParser->applyQueryParameters($entityName, $request, $queryBuilder);
-        $this->queryParser->parseFilter($entityName, $request, $queryBuilder);
 
         return $queryBuilder;
     }
