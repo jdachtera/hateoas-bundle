@@ -99,8 +99,8 @@ class Adress extends Resource {
 
 Generate form types for each model:
 ```
-php app/console generate:doctrine:form TestBundle:Person
-php app/console generate:doctrine:form TestBundle:Address
+$ php app/console generate:doctrine:form TestBundle:Person
+$ php app/console generate:doctrine:form TestBundle:Address
 ```
 
 Set up a a controller for each resource:
