@@ -67,6 +67,11 @@ use Hateoas\Configuration\Annotation as Hateoas;
 use uebb\HateoasBundle\Annotation as UebbHateoas;
 use Symfony\Component\Validator\Constraints as Assert;
 
+/**
+* @ORM\Entity
+* @Hateoas\RelationProvider("uebb.hateoas.relation_provider:addRelations")
+* @Serializer\ExclusionPolicy("all")
+*/
 class Adress extends Resource {
 
   /**
