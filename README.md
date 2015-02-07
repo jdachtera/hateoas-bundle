@@ -151,9 +151,21 @@ root:
     defaults:  { _controller: HateoasBundle:Root:getRoot }
 ```
 
-Now you have a working api.
+Now you have a working api with the following routes:
 
-
+| Method  | Type        | Url                  | Description                                 |
+|---------|-------------|----------------------|---------------------------------------------|
+| GET     | Resource    | /                    | Api Root with links to resource collections |
+| GET     | Collection  | /users               | Get all users                               |
+| POST    | Resource    | /users               | Post a new user resource                    |
+| GET     | Resource    | /users/{id}          | Get a single user                           |
+| PATCH   | Patch       | /user/{id}           | Update a user with a patch                  |
+| GET     | Collection  | /user/{id}/addresses | Get all addresses of a user                 |
+| PATCH   | Patch       | /user/{id}/addresses | Update the users address collection         |
+| GET     | Collection  | /addresses           | Get all users                               |
+| POST    | Resource    | /addresses           | Post a new address resource                 |
+| GET     | Resource    | /addresses/{id}      | Get a single address                        |
+| PATCH   | Patch       | /addresses/{id}      | Update an address with a patch              |
 
 
 
