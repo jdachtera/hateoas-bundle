@@ -1,10 +1,18 @@
 parameters:
+    uebb.hateoas.relation_provider.class: uebb\HateoasBundle\Service\RelationProvider
+    uebb.hateoas.link_parser.class: uebb\HateoasBundle\Service\LinkParser
+    uebb.hateoas.link_resolver.class: uebb\HateoasBundle\Service\LinkResolver
+    uebb.hateoas.request_processor.class: uebb\HateoasBundle\Service\RequestProcessor
+    uebb.hateoas.query_parser.class: uebb\HateoasBundle\Service\QueryParser
+    uebb.hateoas.routing.loader.class: uebb\HateoasBundle\Routing\HateoasRouteLoader
+    uebb.hateoas.permission_checker.class: uebb\HateoasBundle\EventListener\PermissionChecker
+    uebb.hateoas.encoder_injector.class: uebb\HateoasBundle\EventListener\EncoderInjector
 
 
 services:
 
     uebb.hateoas.relation_provider:
-        class: uebb\HateoasBundle\Service\RelationProvider
+        class: %uebb.hateoas.relation_provider.class%
         arguments:
             - @doctrine.orm.entity_manager
             - @router
@@ -12,12 +20,12 @@ services:
             - @service_container
 
     uebb.hateoas.link_parser:
-        class: uebb\HateoasBundle\Service\LinkParser
+        class: %uebb.hateoas.link_parser.class%
         arguments:
            - @uebb.hateoas.link_resolver
 
     uebb.hateoas.link_resolver:
-        class: uebb\HateoasBundle\Service\LinkResolver
+        class: %uebb.hateoas.link_resolver.class%
         arguments:
             - @controller_resolver
             - @router
@@ -25,7 +33,7 @@ services:
             - @event_dispatcher
 
     uebb.hateoas.request_processor:
-        class: uebb\HateoasBundle\Service\RequestProcessor
+        class: %uebb.hateoas.request_processor.class%
         arguments:
             - @doctrine.orm.entity_manager
             - @uebb.hateoas.link_parser
@@ -37,14 +45,14 @@ services:
             - @validator
 
     uebb.hateoas.query_parser:
-        class: uebb\HateoasBundle\Service\QueryParser
+        class: %uebb.hateoas.query_parser.class%
         arguments:
             - @service_container
             - @doctrine.orm.entity_manager
             - @annotation_reader
 
     uebb.hateoas.routing.loader:
-        class: uebb\HateoasBundle\Routing\HateoasRouteLoader
+        class: %uebb.hateoas.routing.loader.class%
         arguments:
             - @service_container
             - @file_locator
@@ -53,6 +61,20 @@ services:
             - %fos_rest.routing.loader.default_format%
         tags:
             - {name: routing.loader }
+
+    uebb.hateoas.permission_checker:
+        class: %uebb.hateoas.permission_checker.class%
+        arguments:
+            - @security.authorization_checker
+        tags:
+            - { name: kernel.event_listener, event: uebb.hateoas.action, method:onActionEvent }
+
+    uebb.hateoas.encoder_injector:
+        class: %uebb.hateoas.encoder_injector.class%
+        arguments:
+            - @security.encoder_factory
+        tags:
+            - { name: kernel.event_listener, event: uebb.hateoas.action, method:onActionEvent }
 
 
 

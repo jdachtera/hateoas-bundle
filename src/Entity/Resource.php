@@ -17,7 +17,6 @@ use uebb\HateoasBundle\Annotation as UebbHateoas;
 /**
  * Class Resource
  *
- * @ORM\MappedSuperclass
  * @Serializer\ExclusionPolicy("all")
  * @package uebb\HateoasBundle\Entity
  */

@@ -30,7 +30,17 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 use Symfony\Component\PropertyAccess\PropertyAccess;
 use Symfony\Component\Validator\Validator;
 use uebb\HateoasBundle\Entity\ResourceInterface;
+use uebb\HateoasBundle\Event\ActionEvent;
+use uebb\HateoasBundle\Event\AddLinkActionEventData;
+use uebb\HateoasBundle\Event\GetActionEventData;
+use uebb\HateoasBundle\Event\GetCollectionActionEventData;
+use uebb\HateoasBundle\Event\GetLinkCollectionActionEventData;
 use uebb\HateoasBundle\Event\HateoasActionEvent;
+use uebb\HateoasBundle\Event\PatchActionEventData;
+use uebb\HateoasBundle\Event\PatchPropertyActionEventData;
+use uebb\HateoasBundle\Event\PostActionEventData;
+use uebb\HateoasBundle\Event\RemoveActionEventData;
+use uebb\HateoasBundle\Event\RemoveLinkActionEventData;
 
 class RequestProcessor
 {
@@ -89,25 +99,18 @@ class RequestProcessor
 
 
     /**
-     * @param $timeOfEvent
-     * @param String $entityName
-     * @param String $method
-     * @param ResourceInterface $resource
-     * @param String $propertyName
-     * @param mixed $propertyValue
+     * @param ActionEvent $event
+     * @internal param $timeOfEvent
+     * @internal param String $entityName
+     * @internal param String $method
+     * @internal param ResourceInterface $resource
+     * @internal param String $propertyName
+     * @internal param mixed $propertyValue
      */
-    protected function dispatchActionEvent($timeOfEvent, $entityName, $method, $resource = NULL, $propertyName = NULL, $propertyValue = NULL)
+    protected function dispatchActionEvent(ActionEvent $event)
     {
-        $event = new HateoasActionEvent(
-            $method,
-            $this->getClassMetadata($entityName)->getName(),
-            $resource,
-            $propertyName,
-            $propertyValue
-        );
-
-        $this->dispatcher->dispatch('uebb.hateoas.' . $timeOfEvent . '_action', $event);
-        $this->dispatcher->dispatch('uebb.hateoas.' . $timeOfEvent . '_' . $method, $event);
+        $this->dispatcher->dispatch('uebb.hateoas.action', $event);
+        $this->dispatcher->dispatch('uebb.hateoas.action_' .  $event->getId(), $event);
     }
 
     /**
@@ -157,8 +160,14 @@ class RequestProcessor
      */
     public function getResources($entityName, Request $request)
     {
-        $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'cget');
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new GetCollectionActionEventData($entityName)));
+        $queryBuilder = $this->getBaseQueryBuilder($entityName, $request);
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetCollectionActionEventData($entityName, $queryBuilder)));
+        return $queryBuilder;
+    }
 
+    public function getBaseQueryBuilder($entityName, Request $request)
+    {
         /** @var \Doctrine\ORM\Query|\Doctrine\ORM\QueryBuilder $queryBuilder */
         $queryBuilder = $this->getRepository($entityName)->createQueryBuilder('e');
 
@@ -171,13 +180,14 @@ class RequestProcessor
     /**
      * Get a single resource by id
      *
-     * @param $id - The resource id
      * @param string $entityName - The entitiy name. If it is null, the value name of the controller is used
+     * @param $id - The resource id
      * @return null
+     * @throws \Doctrine\ORM\Query\QueryException
      */
     public function getResource($entityName, $id)
     {
-        $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'get');
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new GetActionEventData($entityName, $id)));
 
         /** @var \Doctrine\ORM\QueryBuilder $queryBuilder */
         $queryBuilder = $this->getRepository($entityName)->createQueryBuilder('e');
@@ -198,7 +208,7 @@ class RequestProcessor
             throw new NotFoundHttpException('Resource ' . $entityName . ':' . $id . ' not found');
         }
 
-        $this->dispatchActionEvent(HateoasActionEvent::AFTER, $entityName, 'get', $resource);
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetActionEventData($entityName, $id, $resource)));
 
         return $resource;
     }
@@ -222,76 +232,33 @@ class RequestProcessor
     }
 
     /**
-     * Remove all relations from a resource
-     *
-     * @param ResourceInterface $resource - The resource
-     */
-    protected function removeRelations($entityName, ResourceInterface $resource)
-    {
-        /** @var ClassMetadata $metadata */
-        $metadata = $this->getClassMetadata($entityName);
-
-        $accessor = PropertyAccess::createPropertyAccessor();
-
-        foreach ($metadata->getAssociationMappings() as $mapping) {
-
-            if (!$mapping['isCascadeRemove']) {
-
-                /** @var ClassMetadata $targetMetadata */
-                $targetMetadata = $this->getClassMetadata($mapping['targetEntity']);
-
-                if ($metadata->isSingleValuedAssociation($mapping['fieldName'])) {
-                    $targetResources = array();
-                    $targetResource = $targetResource = $accessor->getValue($resource, $mapping['fieldName']);
-                    if ($targetResource instanceof $mapping['targetEntity']) {
-                        $targetResources[] = $targetResource;
-                    }
-                    $accessor->setValue($resource, $mapping['fieldName'], NULL);
-                } else {
-                    $targetResources = $accessor->getValue($resource, $mapping['fieldName'])->toArray();
-                    $accessor->getValue($resource, $mapping['fieldName'])->clear();
-                }
-
-                if (trim($mapping['mappedBy']) !== '' && $targetMetadata->hasAssociation($mapping['mappedBy'])) {
-
-                    foreach ($targetResources as $targetResource) {
-                        if ($targetMetadata->isSingleValuedAssociation($mapping['mappedBy'])) {
-                            $accessor->setValue($targetResource, $mapping['mappedBy'], NULL);
-                        } else {
-                            $accessor->getValue($targetResource, $mapping['mappedBy'])->remove($resource);
-                        }
-                        $this->entityManager->persist($targetResource);
-                    }
-                }
-            }
-
-        }
-    }
-
-    /**
      * Get the queryBuilder for the related resources
      *
      * @param integer $id - The id of the resource
-     * @param string $propertyName - The name of the related resources property
+     * @param string $rel - The name of the related resources property
      * @param Criteria $criteria - Optional criteria
      * @return QueryBuilder
      * @throws \Doctrine\ORM\Mapping\MappingException
      */
-    public function getRelatedResources($entityName, Request $request, $resource, $propertyName)
+    public function getRelatedResources($entityName, Request $request, $resource, $rel)
     {
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new GetLinkCollectionActionEventData($entityName, $resource, $rel)));
+
         /** @var ClassMetadata $metadata */
-        $mapping = $this->getClassMetadata($entityName)->getAssociationMapping($propertyName);
+        $mapping = $this->getClassMetadata($entityName)->getAssociationMapping($rel);
         $relatedMapping = $this->getClassMetadata($mapping['targetEntity'])->getAssociationMapping(
             $mapping['isOwningSide'] ? $mapping['inversedBy'] : $mapping['mappedBy']
         );
 
         /** @var \Doctrine\ORM\QueryBuilder $queryBuilder */
-        $queryBuilder = $this->getResources($mapping['targetEntity'], $request);
+        $queryBuilder = $this->getBaseQueryBuilder($mapping['targetEntity'], $request);
 
         $queryBuilder->innerJoin('e.' . $relatedMapping['fieldName'], $relatedMapping['fieldName']);
         $queryBuilder->andWhere($relatedMapping['fieldName'] . '.id = :parent_id');
 
         $queryBuilder->setParameter('parent_id', $resource->getId());
+
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetLinkCollectionActionEventData($entityName, $resource, $rel, $queryBuilder)));
 
         return $queryBuilder;
     }
@@ -326,9 +293,11 @@ class RequestProcessor
         $resourceClassName = $this->getClassMetadata($entityName)->getName();
 
         $resource = new $resourceClassName();
+
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PostActionEventData($entityName, $resource)));
+
         $links = $request->attributes->get('links');
 
-        $this->clearLinks($entityName, $resource);
         $this->addLinks($entityName, $resource, $links);
 
         $form = $this->getForm($resource);
@@ -347,7 +316,8 @@ class RequestProcessor
         $request->request->set($form->getName(), $data);
         $form->handleRequest($request);
 
-        $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'post', $resource);
+
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new PostActionEventData($entityName, $resource)));
 
         return $resource;
     }
@@ -355,38 +325,22 @@ class RequestProcessor
     public function removeResource($entityName, $id)
     {
         $resource = $this->getResource($entityName, $id);
-        $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'delete', $resource);
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveActionEventData($entityName, $resource)));
 
         $this->entityManager->remove($resource);
         $this->entityManager->flush();
-    }
 
-
-    /**
-     * Remove all links from a resource
-     *
-     * @param ResourceInterface $resource - The resource
-     */
-    protected function clearLinks($entityName, $resource)
-    {
-        $metadata = $this->getClassMetadata($entityName);
-        $accessor = PropertyAccess::createPropertyAccessor();
-
-        foreach ($metadata->getAssociationNames() as $associationName) {
-            if ($metadata->isSingleValuedAssociation($associationName)) {
-                $accessor->setValue($resource, $associationName, NULL);
-            } else {
-                $accessor->getValue($resource, $associationName)->clear();
-            }
-        }
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveActionEventData($entityName, $resource)));
     }
 
 
     /**
      * Connect links to a resource
      *
-     * @param array $links - The links
+     * @param $entityName
      * @param ResourceInterface $resource -  The resource
+     * @param array $links - The links
+     * @throws NotAcceptableHttpException
      */
     protected function addLinks($entityName, $resource, $links)
     {
@@ -423,7 +377,7 @@ class RequestProcessor
                 if (!($value instanceof $relatedClass)) {
                     throw new NotAcceptableHttpException("Wrong resource type or resource not found.");
                 } else {
-                    $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'link', $resource, $associationName, $value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
 
                     if ($isInverse) {
                         if ($targetMetadata->isSingleValuedAssociation($targetField)) {
@@ -433,14 +387,16 @@ class RequestProcessor
                             if ($collection->contains($resource)) {
                                 throw new ConflictHttpException("Resource cannot be linked twice");
                             } else {
-                                $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'link', $resource, $associationName, $value);
+                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                                 $collection->add($resource);
                             }
                         }
                     } else {
+                        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                         $accessor->setValue($resource, $associationName, $value);
                     }
                     $this->entityManager->persist($value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                 }
             } else {
 
@@ -460,7 +416,7 @@ class RequestProcessor
                             if ($collection->contains($resource)) {
                                 throw new ConflictHttpException("Resource cannot be linked twice");
                             } else {
-                                $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'link', $resource, $associationName, $value);
+                                $this->dispatchActionEvent($entityName, 'link', $resource, $associationName, $value);
                                 $collection->add($resource);
                             }
                         }
@@ -468,7 +424,7 @@ class RequestProcessor
                         if ($collection->contains($value)) {
                             throw new ConflictHttpException("Resource cannot be linked twice");
                         } else {
-                            $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'link', $resource, $associationName, $value);
+                            $this->dispatchActionEvent($entityName, 'link', $resource, $associationName, $value);
                             $collection->add($value);
                         }
                     }
@@ -484,8 +440,9 @@ class RequestProcessor
     /**
      * Disconnect links from a resource
      *
-     * @param array $links - The links
+     * @param $entityName
      * @param ResourceInterface $resource - The resource
+     * @param array $links - The links
      */
     protected function removeLinks($entityName, $resource, $links)
     {
@@ -517,13 +474,14 @@ class RequestProcessor
                 $value = count($links[$associationName]) ? $links[$associationName][0] : null;
                 $originalValue = $accessor->getValue($resource, $associationName);
                 if ($originalValue === $value) {
-                    $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'unlink', $resource, $associationName, $value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                     $accessor->setValue($resource, $associationName, null);
+                    $this->entityManager->persist($value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                 } else {
                     throw new PreconditionFailedHttpException("Resource " . $this->entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
                 }
 
-                $this->entityManager->persist($value);
             } else {
                 $collection = $accessor->getValue($resource, $associationName);
 
@@ -531,13 +489,15 @@ class RequestProcessor
                     if (!($value instanceof $relatedClass)) {
                         throw new UnsupportedMediaTypeHttpException("Wrong resource type or resource not found: " . get_class($value));
                     }
+
                     if ($isInverse) {
                         if ($targetMetadata->isSingleValuedAssociation($targetField)) {
+                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                             $accessor->setValue($value, $targetField, NULL);
                         } else {
                             $collection = $accessor->getValue($value, $targetField);
                             if ($collection->contains($resource)) {
-                                $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'unlink', $resource, $associationName, $value);
+                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                                 $collection->removeElement($resource);
                             } else {
                                 throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
@@ -545,13 +505,14 @@ class RequestProcessor
                         }
                     } else {
                         if ($collection->contains($value)) {
-                            $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'unlink', $resource, $associationName, $value);
+                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                             $collection->removeElement($value);
                         } else {
                             throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
                         }
                     }
                     $this->entityManager->persist($value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
                 }
             }
 
@@ -605,7 +566,7 @@ class RequestProcessor
 
     public function patchResource($entityName, $resource, array $actions)
     {
-        $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'patch', $resource);
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchActionEventData($entityName, $resource)));
 
         /** @var ClassMetadata $metadata */
         $metadata = $this->getClassMetadata($entityName);
@@ -665,7 +626,8 @@ class RequestProcessor
                         throw new NotImplementedException('Operation ' . $action['op'] . ' is not implemented');
                         break;
                 }
-                $this->dispatchActionEvent(HateoasActionEvent::BEFORE, $entityName, 'patchProperty', $resource, $path_parts[0], $data[$path_parts[0]]);
+
+                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchPropertyActionEventData($entityName, $resource, $path_parts[0], $action['value'])));
             }
         }
 
@@ -675,6 +637,12 @@ class RequestProcessor
 
         $form = $this->getForm($resource);
         $form->submit($data, FALSE);
+
+        foreach($data as $propertyName => $propertyValue) {
+            $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new PatchPropertyActionEventData($entityName, $resource, $propertyName, $propertyValue)));
+        }
+
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchActionEventData($entityName, $resource)));
     }
 
 

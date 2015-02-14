@@ -23,6 +23,10 @@ class RootController extends \FOS\RestBundle\Controller\FOSRestController
      *
      */
     public function getRootAction() {
-        return $this->view(new Root());
+        return $this->view(new Root(
+            $this->get('router')->getRouteCollection()->get(
+                $this->container->get('request')->get('_route'))->getPath()
+            )
+        );
     }
 }

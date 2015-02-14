@@ -19,6 +19,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouterInterface;
 use uebb\HateoasBundle\Entity\ResourceInterface;
+use uebb\HateoasBundle\Entity\Root;
 
 /**
  * Class RelationProvider
@@ -151,8 +152,10 @@ class RelationProvider
 
     }
 
-    protected function addRootRelations($object, ClassMetadataInterface $classMetadata)
+    protected function addRootRelations(Root $object, ClassMetadataInterface $classMetadata)
     {
+        $prefix = $object->getPrefix();
+        $prefixLength = strlen($prefix);
 
         $relations = array();
         foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $metadata) {
@@ -165,7 +168,10 @@ class RelationProvider
             ) {
                 $routeName = $this->findRoute($metadata->getName(), 'cgetAction');
                 if ($routeName) {
-                    $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array(), TRUE));
+                    $route = $this->router->getRouteCollection()->get($routeName);
+                    if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
+                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array(), TRUE));
+                    }
                 }
             }
 

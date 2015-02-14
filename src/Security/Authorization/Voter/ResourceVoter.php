@@ -11,7 +11,17 @@ namespace uebb\HateoasBundle\Security\Authorization\Voter;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
-use uebb\HateoasBundle\Event\HateoasActionEvent;
+use Symfony\Component\Security\Core\User\User;
+use uebb\HateoasBundle\Event\ActionEvent;
+use uebb\HateoasBundle\Event\AddLinkActionEventData;
+use uebb\HateoasBundle\Event\GetActionEventData;
+use uebb\HateoasBundle\Event\GetCollectionActionEventData;
+use uebb\HateoasBundle\Event\GetLinkCollectionActionEventData;
+use uebb\HateoasBundle\Event\PatchActionEventData;
+use uebb\HateoasBundle\Event\PatchPropertyActionEventData;
+use uebb\HateoasBundle\Event\PostActionEventData;
+use uebb\HateoasBundle\Event\RemoveActionEventData;
+use uebb\HateoasBundle\Event\RemoveLinkActionEventData;
 
 /**
  * Class EntityVoter
@@ -26,7 +36,7 @@ abstract class ResourceVoter implements VoterInterface
     /**
      * @var array
      */
-    protected $supportedEntities = array();
+    protected $supportedClasses = array();
 
     /**
      * @param string $class
@@ -34,8 +44,7 @@ abstract class ResourceVoter implements VoterInterface
      */
     public function supportsClass($class)
     {
-        foreach ($this->supportedEntities as $entityName) {
-            $supportedClass = 'uebb\HateoasBundle\Entity\\' . $entityName;
+        foreach ($this->supportedClasses as $supportedClass) {
             if ($supportedClass === $class || is_subclass_of($class, $supportedClass)) {
                 return TRUE;
             }
@@ -49,7 +58,7 @@ abstract class ResourceVoter implements VoterInterface
      */
     public function supportsAttribute($attribute)
     {
-        return $attribute === 'ENTITY_VOTE';
+        return $attribute === 'RESOURCE_VOTE';
     }
 
     /**
@@ -61,160 +70,127 @@ abstract class ResourceVoter implements VoterInterface
      */
     public function vote(TokenInterface $token, $event, array $attributes)
     {
-        if (!($event instanceof HateoasActionEvent)) {
+        if (!($event instanceof ActionEvent)) {
             return VoterInterface::ACCESS_ABSTAIN;
         }
-        if (count($attributes) !== 1 || $attributes[0] !== 'ENTITY_VOTE' || !$this->supportsClass($event->getEntity())) {
-            return VoterInterface::ACCESS_ABSTAIN;
-        }
-        $result = $this->checkPermissions($token, $event);
 
-        return $result;
+        if (count($attributes) !== 1 || $attributes[0] !== 'RESOURCE_VOTE' || !$this->supportsClass($event->getData()->getEntityName())) {
+            return VoterInterface::ACCESS_ABSTAIN;
+        }
+
+
+        return $this->checkPermissions($token, $event);
     }
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param ActionEvent $event
      * @return int
      * @throws \Symfony\Component\Security\Core\Exception\InvalidArgumentException
      */
-    protected function checkPermissions(TokenInterface $token, HateoasActionEvent $event)
+    protected function checkPermissions(TokenInterface $token, ActionEvent $event)
     {
-        switch ($event->getMethod()) {
+        switch ($event->getAction()) {
             case 'post':
-                return $this->post($token, $event);
+                return $this->post($token, $event->getData());
                 break;
             case 'put':
-                return $this->put($token, $event);
+                return $this->put($token, $event->getData());
                 break;
             case 'patch':
-                return $this->patch($token, $event);
+                return $this->patch($token, $event->getData());
                 break;
-            case 'patchProperty':
-                return $this->patchProperty($token, $event);
+            case 'patch_property':
+                return $this->patchProperty($token, $event->getData());
                 break;
             case 'get':
-                return $this->get($token, $event);
+                return $this->get($token, $event->getData());
                 break;
-            case 'cget':
-                return $this->cget($token, $event);
+            case 'get_collection':
+                return $this->getCollection($token, $event->getData());
                 break;
-            case 'lget':
-                return $this->lget($token, $event);
+            case 'get_link_collection':
+                return $this->getLinkCollection($token, $event->getData());
                 break;
-            case 'link':
-                return $this->link($token, $event);
+            case 'add_link':
+                return $this->addLink($token, $event->getData());
                 break;
-            case 'unlink':
-                return $this->unlink($token, $event);
+            case 'remove_link':
+                return $this->removeLink($token, $event->getData());
                 break;
-            case 'delete':
-                return $this->delete($token, $event);
+            case 'remove':
+                return $this->remove($token, $event->getData());
             default:
                 throw new InvalidArgumentException();
         }
-    }
 
-    /**
-     * @param TokenInterface $token
-     * @param HateoasActionEvent $event
-     * @return int
-     */
-    protected function get(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return VoterInterface::ACCESS_ABSTAIN;
-    }
-
-    /**
-     * @param TokenInterface $token
-     * @param HateoasActionEvent $event
-     * @return int
-     */
-    protected function cget(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->get($token, $event);
-    }
-
-    /**
-     * @param TokenInterface $token
-     * @param HateoasActionEvent $event
-     * @return int
-     */
-    protected function lget(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->get($token, $event);
     }
 
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param GetActionEventData $data
      * @return int
      */
-    protected function post(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return VoterInterface::ACCESS_ABSTAIN;
-    }
+    protected function get(TokenInterface $token, GetActionEventData $data) {}
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param GetCollectionActionEventData $data
      * @return int
      */
-    protected function put(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->post($token, $event);
-    }
+    protected function getCollection(TokenInterface $token, GetCollectionActionEventData $data) {}
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param GetLinkCollectionActionEventData $data
      * @return int
      */
-    protected function patch(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->post($token, $event);
-    }
+    protected function getLinkCollection(TokenInterface $token, GetLinkCollectionActionEventData $data) {}
+
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param PostActionEventData $data
      * @return int
      */
-    protected function patchProperty(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->patch($token, $event);
-    }
+    protected function post(TokenInterface $token, PostActionEventData $data) {}
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param PatchActionEventData $data
      * @return int
      */
-    protected function delete(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->post($token, $event);
-    }
+    protected function patch(TokenInterface $token, PatchActionEventData $data) {}
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param PatchPropertyActionEventData $data
      * @return int
      */
-    protected function link(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->post($token, $event);
-    }
+    protected function patchProperty(TokenInterface $token, PatchPropertyActionEventData $data) {}
 
     /**
      * @param TokenInterface $token
-     * @param HateoasActionEvent $event
+     * @param RemoveActionEventData $data
      * @return int
      */
-    protected function unlink(TokenInterface $token, HateoasActionEvent $event)
-    {
-        return $this->link($token, $event);
-    }
+    protected function remove(TokenInterface $token, RemoveActionEventData $data) {}
+
+    /**
+     * @param TokenInterface $token
+     * @param AddLinkActionEventData $data
+     * @return int
+     */
+    protected function addLink(TokenInterface $token, AddLinkActionEventData $data) {}
+
+
+    /**
+     * @param TokenInterface $token
+     * @param RemoveLinkActionEventData $data
+     * @return int
+     */
+    protected function removeLink(TokenInterface $token, RemoveLinkActionEventData $data) {}
 
     /**
      * @param bool $grant
@@ -230,36 +206,12 @@ abstract class ResourceVoter implements VoterInterface
     }
 
     /**
-     * @param User $authUser
-     * @param HateoasActionEvent $event
+     * @param $role
+     * @param TokenInterface $token
      * @return bool
      */
-    protected function isOwnedByUser(User $authUser, HateoasActionEvent $event)
+    protected function hasRole($role, TokenInterface $token)
     {
-        return $authUser instanceof User && $event->getResource()->getCreatedBy() === $authUser;
-    }
-
-    /**
-     * @param HateoasActionEvent $event
-     * @return bool
-     */
-    protected function ownerIsChanged(HateoasActionEvent $event)
-    {
-        return $event->getLinkRelation() === 'createdBy' && $event->getResource()->getCreatedBy() !== NULL;
-    }
-
-    /**
-     * @param $grantRoles
-     * @param $user
-     * @return bool
-     */
-    protected function hasRole($grantRoles, $user)
-    {
-        foreach ($grantRoles as $role) {
-            if (in_array($role, $user->getRoles())) {
-                return TRUE;
-            }
-        }
-        return FALSE;
+        return $token->getUser() instanceof User && in_array($role, $token->getUser()->getRoles());
     }
 }

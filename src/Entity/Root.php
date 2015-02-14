@@ -20,4 +20,31 @@ use Hateoas\Configuration\Annotation as Hateoas;
  */
 class Root implements RootInterface {
 
+    /**
+     * @var string
+     */
+    protected $prefix;
+
+    public function __construct($prefix = '/')
+    {
+        $this->prefix = $prefix;
+    }
+
+    /**
+     * @return string
+     */
+    public function getPrefix()
+    {
+        return $this->prefix;
+    }
+
+    /**
+     * @param string $prefix
+     */
+    public function setPrefix($prefix)
+    {
+        $this->prefix = $prefix;
+    }
+
+
 }
