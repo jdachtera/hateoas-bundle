@@ -3,10 +3,22 @@ HATEOAS Symfony Bundle
 
 This bundle simplifies the process of creating HATEOAS Style APIs with Symfony 2 and doctrine.
 
-It is a work in progress and not ready production yes.
+It is a work in progress and not ready production yet.
 
 Quick Start:
 ------------
+
+The bundle needs some global configuration for the JMSSerializer and FOSRestBundle. The easiest way to set up a new project is to use the [uebb/hateoas-distribution](https://github.com/uebb/hateoas-distribution):
+
+```
+$ composer create-project -s dev uebb/hateoas-distribution my_api_project
+```
+
+If you don't want to use it take a look at the app/config/config.yml of the distribution. Add the bundle to your project:
+
+```
+$ composer require uebb/hateoas-bundle
+```
 
 Start by defining your doctrine models:
 
@@ -166,6 +178,17 @@ Now you have a working api with the following routes:
 | POST    | Resource    | /addresses           | Post a new address resource                 |
 | GET     | Resource    | /addresses/{id}      | Get a single address                        |
 | PATCH   | Patch       | /addresses/{id}      | Update an address with a patch              |
+
+Queries and Sorting
+-------------------
+
+All collection resources are automatically paginated and can be filtered and ordered via GET parameters:
+
+where: name="Steve" OR address.addressText="Park Av. 6"
+
+order: name DESC, address.addressText ASC
+
+page: 1
 
 
 

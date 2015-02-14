@@ -1,5 +1,6 @@
 {
   "name": "uebb/hateoas-bundle",
+  "license": "MIT",
   "require": {
     "symfony/form": "~2.6",
     "symfony/validator": "~2.6",
