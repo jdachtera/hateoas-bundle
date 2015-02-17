@@ -9,11 +9,12 @@
 namespace uebb\HateoasBundle\Annotation;
 
 /**
- * Class QueryAble
+ * Class FormField
  * @package uebb\HateoasBundle\Annotation
  * @Annotation
  */
-class QueryAble
+class FormField
 {
-    public $maxDepth = NULL;
+    public $type = NULL;
+    public $options = array();
 }

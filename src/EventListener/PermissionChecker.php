@@ -25,9 +25,9 @@ class PermissionChecker
         'post_get',
         'post_get_collection',
         'post_get_link_collection',
-        'pre_post',
-        'pre_patch',
-        'pre_patch_property',
+        'post_post',
+        'post_patch',
+        'post_patch_property',
         'pre_remove',
         'pre_add_link',
         'pre_remove_link'
@@ -55,7 +55,6 @@ class PermissionChecker
         if (false === $this->authorizationChecker->isGranted(array('RESOURCE_VOTE'), $event)) {
             throw new AccessDeniedHttpException(sprintf('Action %s is not allowed.', $event->getAction()), NULL, 403);
         }
-
 
     }
 }

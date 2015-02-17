@@ -8,10 +8,14 @@
 
 namespace uebb\HateoasBundle\Security\Authorization\Voter;
 
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\ContainerAwareTrait;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
+use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
 use Symfony\Component\Security\Core\User\User;
+use Symfony\Component\Security\Core\User\UserInterface;
 use uebb\HateoasBundle\Event\ActionEvent;
 use uebb\HateoasBundle\Event\AddLinkActionEventData;
 use uebb\HateoasBundle\Event\GetActionEventData;
@@ -30,13 +34,19 @@ use uebb\HateoasBundle\Event\RemoveLinkActionEventData;
  *
  * @package uebb\HateoasBundle\Security\Authorization\Voter
  */
-abstract class ResourceVoter implements VoterInterface
+abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
 {
+    use ContainerAwareTrait;
 
     /**
      * @var array
      */
     protected $supportedClasses = array();
+    /**
+     * @var RoleHierarchyInterface
+     */
+    protected $roleHierarchy;
+
 
     /**
      * @param string $class
@@ -51,6 +61,15 @@ abstract class ResourceVoter implements VoterInterface
         }
         return FALSE;
     }
+
+    /**
+     * @param mixed $roleHierarchy
+     */
+    public function setRoleHierarchy(RoleHierarchyInterface $roleHierarchy)
+    {
+        $this->roleHierarchy = $roleHierarchy;
+    }
+
 
     /**
      * @param string $attribute
@@ -206,12 +225,17 @@ abstract class ResourceVoter implements VoterInterface
     }
 
     /**
-     * @param $role
+     * @param $roleName
      * @param TokenInterface $token
      * @return bool
      */
-    protected function hasRole($role, TokenInterface $token)
+    protected function hasRole($roleName, TokenInterface $token)
     {
-        return $token->getUser() instanceof User && in_array($role, $token->getUser()->getRoles());
+        foreach ($this->roleHierarchy->getReachableRoles($token->getRoles()) as $role) {
+            if ($roleName === $role->getRole()) {
+                return TRUE;
+            }
+        }
+        return FALSE;
     }
 }

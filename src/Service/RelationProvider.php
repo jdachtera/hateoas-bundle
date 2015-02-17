@@ -106,6 +106,28 @@ class RelationProvider
                     )
                 );
             }
+            if (is_subclass_of($classMetadata->getName(), 'uebb\\HateoasBundle\\Entity\\File')) {
+                $downloadRoute = $this->findRoute($classMetadata->getName(), 'getDownloadAction');
+
+                $relations[] = new Hateoas\Relation(
+                    'download',
+                    new Hateoas\Route(
+                        $downloadRoute,
+                        array('id' => 'expr(object.getId())'),
+                        TRUE
+                    ),
+                    null,
+                    array(),
+                    new Hateoas\Exclusion(
+                        NULL,
+                        NULL,
+                        NULL,
+                        NULL,
+                        'expr(object.getId() === NULL)'
+                    )
+                );
+            }
+
             /** @var ClassMetadata $metadata */
             $metadata = $this->entityManager->getClassMetadata($classMetadata->getName());
 

@@ -24,6 +24,7 @@ use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\NotAcceptableHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\PreconditionFailedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
@@ -60,9 +61,9 @@ class RequestProcessor
     protected $linkResolver;
 
     /**
-     * @var FormFactoryInterface
+     * @var FormResolver
      */
-    protected $formFactory;
+    protected $formResolver;
 
     /**
      * @var EventDispatcherInterface
@@ -85,29 +86,22 @@ class RequestProcessor
     protected $validator;
 
 
-    public function __construct(EntityManagerInterface $entityManager, LinkParser $linkParser, LinkResolver $linkResolver, FormFactoryInterface $formFactory, EventDispatcherInterface $dispatcher, QueryParser $queryParser, Serializer $serializer, Validator\RecursiveValidator $validator)
+    public function __construct(EntityManagerInterface $entityManager, LinkParser $linkParser, LinkResolver $linkResolver, FormResolver $formResolver, EventDispatcherInterface $dispatcher, QueryParser $queryParser, Serializer $serializer, Validator\RecursiveValidator $validator)
     {
         $this->entityManager = $entityManager;
         $this->linkParser = $linkParser;
         $this->linkResolver = $linkResolver;
-        $this->formFactory = $formFactory;
+        $this->formResolver = $formResolver;
         $this->dispatcher = $dispatcher;
         $this->queryParser = $queryParser;
         $this->serializer = $serializer;
         $this->validator = $validator;
     }
 
-
     /**
      * @param ActionEvent $event
-     * @internal param $timeOfEvent
-     * @internal param String $entityName
-     * @internal param String $method
-     * @internal param ResourceInterface $resource
-     * @internal param String $propertyName
-     * @internal param mixed $propertyValue
      */
-    protected function dispatchActionEvent(ActionEvent $event)
+    public function dispatchActionEvent(ActionEvent $event)
     {
         $this->dispatcher->dispatch('uebb.hateoas.action', $event);
         $this->dispatcher->dispatch('uebb.hateoas.action_' .  $event->getId(), $event);
@@ -265,24 +259,6 @@ class RequestProcessor
 
 
     /**
-     * Get the form for a resource
-     *
-     * @param ResourceInterface $resource
-     * @return Form
-     */
-    protected function getForm(ResourceInterface $resource)
-    {
-        $resourceClassName = ClassUtils::getClass($resource);
-        $resourceParts = explode("\\", $resourceClassName);
-        $resourceParts[count($resourceParts) - 2] = 'Form';
-        $resourceParts[count($resourceParts) - 1] .= 'Type';
-        $formType = implode("\\", $resourceParts);
-
-        return $this->formFactory->create(new $formType(), $resource);
-    }
-
-
-    /**
      * Apply the request body o hal+json format to a resource. If the resource is NULL a new is created
      *
      * @param Request $request - The http request
@@ -296,11 +272,13 @@ class RequestProcessor
 
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PostActionEventData($entityName, $resource)));
 
-        $links = $request->attributes->get('links');
+        $links = $this->linkResolver->resolveResourceLinks(
+            $this->linkParser->parseLinks($request)
+        );
 
         $this->addLinks($entityName, $resource, $links);
 
-        $form = $this->getForm($resource);
+        $form = $this->formResolver->getForm($resource);
 
         $data = array();
 
@@ -325,12 +303,15 @@ class RequestProcessor
     public function removeResource($entityName, $id)
     {
         $resource = $this->getResource($entityName, $id);
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveActionEventData($entityName, $resource)));
+        $eventData = new RemoveActionEventData($entityName, $resource);
+
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, $eventData));
 
         $this->entityManager->remove($resource);
-        $this->entityManager->flush();
 
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveActionEventData($entityName, $resource)));
+        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, $eventData));
+
+        return $resource;
     }
 
 
@@ -373,6 +354,7 @@ class RequestProcessor
                     throw new ConflictHttpException('Resource can only have one ' . $associationName . ' relation');
                 }
                 $value = count($links[$associationName]) ? $links[$associationName][0] : null;
+
 
                 if (!($value instanceof $relatedClass)) {
                     throw new NotAcceptableHttpException("Wrong resource type or resource not found.");
@@ -635,7 +617,7 @@ class RequestProcessor
         $this->removeLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToRemove));
         $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
 
-        $form = $this->getForm($resource);
+        $form = $this->formResolver->getForm($resource);
         $form->submit($data, FALSE);
 
         foreach($data as $propertyName => $propertyValue) {

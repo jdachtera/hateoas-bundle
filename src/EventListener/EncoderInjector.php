@@ -48,9 +48,10 @@ class EncoderInjector
             return;
         }
 
-        if ($event->getData()->getResource() instanceof User) {
+        $resource = $event->getData()->getResource();
 
-            $event->getData()->getResource()->setEncoder($this->encoderFactory->getEncoder($event->getData()->getResource()));
+        if ($resource instanceof User) {
+            $resource->setEncoder($this->encoderFactory->getEncoder($resource));
         }
 
     }

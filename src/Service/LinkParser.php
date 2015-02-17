@@ -2,6 +2,7 @@
 
 namespace uebb\HateoasBundle\Service;
 
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 
@@ -32,12 +33,12 @@ class LinkParser
      * @param GetResponseEvent $event
      * @return array|null
      */
-    public function parseLinks(GetResponseEvent $event)
+    public function parseLinks(Request $request)
     {
-        if ($event->getRequest()->headers->has('link')) {
+        if ($request->headers->has('link')) {
 
             $links = array();
-            $header = $event->getRequest()->headers->get('link');
+            $header = $request->headers->get('link');
 
             /*
              * Due to limitations, multiple same-name headers are sent as comma
@@ -65,12 +66,12 @@ class LinkParser
                 $linkTable[$rel][] = $resource;
             }
 
-            $event->getRequest()->attributes->set('_links', $linkTable);
+            return $linkTable;
         } else {
-            if ($event->getRequest()->request->has('_links')) {
+            if ($request->request->has('_links')) {
 
-                $links = $event->getRequest()->request->get('_links');
-                $event->getRequest()->request->remove('_links');
+                $links = $request->request->get('_links');
+                $request->request->remove('_links');
 
                 forEach ($links as $rel => $resources) {
                     if (!is_array($resources)) {
@@ -87,7 +88,7 @@ class LinkParser
                     $links[$rel] = $rel_links;
                 }
 
-                $event->getRequest()->attributes->set('_links', $links);
+                return $links;
             }
         }
     }

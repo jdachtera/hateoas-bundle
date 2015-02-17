@@ -26,14 +26,15 @@ use uebb\HateoasBundle\Annotation as UebbHateoas;
  * @ORM\MappedSuperclass
  * @Serializer\ExclusionPolicy("all")
  */
-class User extends Resource implements UserInterface, \Serializable{
+class User extends Resource implements UserInterface
+{
 
     /**
      * @var String
      * @ORM\Column(type="string")
      * @UebbHateoas\QueryAble
+     * @UebbHateoas\FormField
      * @Serializer\Expose
-     *
      */
     protected $username;
 
@@ -44,13 +45,13 @@ class User extends Resource implements UserInterface, \Serializable{
     protected $password;
 
     /**
+     * @UebbHateoas\FormField
      * @var string
      */
     protected $plainPassword;
 
     /**
      * @var string
-     *
      * @ORM\Column(type="string")
      */
     protected $salt;
@@ -64,7 +65,6 @@ class User extends Resource implements UserInterface, \Serializable{
     /**
      * @var array
      * @ORM\Column(type="simple_array")
-     *
      * @Assert\Choice(
      *      choices = {"ROLE_ADMIN", "ROLE_USER"},
      *      multipleMessage = "user.validation.roles.invalid_choice",
@@ -72,39 +72,12 @@ class User extends Resource implements UserInterface, \Serializable{
      *      minMessage = "user.validation.roles.min",
      *      min = 1
      * )
-     *
      * @Assert\NotNull(message = "user.validation.roles.null")
-     *
      * @UebbHateoas\QueryAble
-     *
+     * @UebbHateoas\FormField
      * @Serializer\Expose
      */
     protected $roles;
-
-    /**
-     * (PHP 5 &gt;= 5.1.0)<br/>
-     * String representation of object
-     * @link http://php.net/manual/en/serializable.serialize.php
-     * @return string the string representation of the object or null
-     */
-    public function serialize()
-    {
-        // TODO: Implement serialize() method.
-    }
-
-    /**
-     * (PHP 5 &gt;= 5.1.0)<br/>
-     * Constructs the object
-     * @link http://php.net/manual/en/serializable.unserialize.php
-     * @param string $serialized <p>
-     * The string representation of the object.
-     * </p>
-     * @return void
-     */
-    public function unserialize($serialized)
-    {
-        // TODO: Implement unserialize() method.
-    }
 
     /**
      * Returns the roles granted to the user.

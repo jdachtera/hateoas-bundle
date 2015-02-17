@@ -8,6 +8,7 @@
 
 namespace uebb\HateoasBundle\Entity;
 
-interface RootInterface {
+interface RootInterface
+{
 
 }

@@ -17,26 +17,38 @@ class File extends Resource
 {
     /**
      * @var string
+     * @ORM\Column(type="string")
      *
      * @Serializer\Expose
      */
     protected $name;
     /**
      * @var integer
+     * @ORM\Column(type="integer")
      *
      * @Serializer\Expose
      */
     protected $size;
     /**
      * @var string
+     * @ORM\Column(type="string")
      *
      * @Serializer\Expose
      */
     protected $mimeType;
     /**
      * @var \Symfony\Component\HttpFoundation\File\UploadedFile
+     *
+     * @UebbHateoas\FormField
      */
     protected $upload;
+
+    /**
+     * @var string
+     *
+     * @ORM\Column(type="string")
+     */
+    protected $realname;
 
     /**
      * @return string
@@ -101,4 +113,22 @@ class File extends Resource
     {
         $this->upload = $upload;
     }
+
+    /**
+     * @return string
+     */
+    public function getRealname()
+    {
+        return $this->realname;
+    }
+
+    /**
+     * @param string $realname
+     */
+    public function setRealname($realname)
+    {
+        $this->realname = $realname;
+    }
+
+
 }

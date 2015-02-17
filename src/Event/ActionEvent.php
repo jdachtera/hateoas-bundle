@@ -29,6 +29,7 @@ class ActionEvent extends Event
 
     const PRE = 'pre';
     const POST = 'post';
+    const PERSIST = 'persist';
 
     /**
      * @var string

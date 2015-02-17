@@ -7,6 +7,8 @@ parameters:
     uebb.hateoas.routing.loader.class: uebb\HateoasBundle\Routing\HateoasRouteLoader
     uebb.hateoas.permission_checker.class: uebb\HateoasBundle\EventListener\PermissionChecker
     uebb.hateoas.encoder_injector.class: uebb\HateoasBundle\EventListener\EncoderInjector
+    uebb.hateoas.file_saver.class: uebb\HateoasBundle\EventListener\FileSaver
+    uebb.hateoas.form_resolver.class : uebb\HateoasBundle\Service\FormResolver
 
 
 services:
@@ -38,7 +40,7 @@ services:
             - @doctrine.orm.entity_manager
             - @uebb.hateoas.link_parser
             - @uebb.hateoas.link_resolver
-            - @form.factory
+            - @uebb.hateoas.form_resolver
             - @event_dispatcher
             - @uebb.hateoas.query_parser
             - @jms_serializer
@@ -67,7 +69,20 @@ services:
         arguments:
             - @security.authorization_checker
         tags:
-            - { name: kernel.event_listener, event: uebb.hateoas.action, method:onActionEvent }
+            - { name: kernel.event_listener, event: uebb.hateoas.action, method:onActionEvent, priority: 250 }
+
+    uebb.hateoas.form_resolver:
+        class: %uebb.hateoas.form_resolver.class%
+        arguments:
+            - @form.factory
+            - @annotation_reader
+
+    uebb.hateoas.file_saver:
+        class: %uebb.hateoas.file_saver.class%
+        arguments:
+            - @service_container
+        tags:
+            - { name: kernel.event_listener, event: uebb.hateoas.action_post_post, method:onActionEvent }
 
     uebb.hateoas.encoder_injector:
         class: %uebb.hateoas.encoder_injector.class%
@@ -75,6 +90,15 @@ services:
             - @security.encoder_factory
         tags:
             - { name: kernel.event_listener, event: uebb.hateoas.action, method:onActionEvent }
+
+    uebb.hateoas.entity_voter:
+        class: uebb\HateoasBundle\Security\Authorization\Voter\ResourceVoter
+        abstract: true
+        public: false
+        calls:
+            - [setRoleHierarchy, [@security.role_hierarchy]]
+
+
 
 
 

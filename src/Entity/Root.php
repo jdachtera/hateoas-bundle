@@ -18,7 +18,8 @@ use Hateoas\Configuration\Annotation as Hateoas;
  *
  * @Serializer\ExclusionPolicy("all")
  */
-class Root implements RootInterface {
+class Root implements RootInterface
+{
 
     /**
      * @var string

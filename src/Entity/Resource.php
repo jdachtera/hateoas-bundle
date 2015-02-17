@@ -36,6 +36,7 @@ abstract class Resource implements ResourceInterface
      *
      * @UebbHateoas\QueryAble
      *
+     *
      * @Serializer\Expose
      */
     protected $id;
