@@ -29,16 +29,6 @@ class FileSaver
         $this->container = $container;
     }
 
-    public function getUploadDir($className)
-    {
-        return
-            $this->container->get('kernel')->getRootDir() . '/' .
-            $this->container->getParameter('uebb.hateoas.upload_dir') . '/' .
-            str_replace('\\', DIRECTORY_SEPARATOR, $className)
-        ;
-    }
-
-
     /**
      * Check the permission's of a crud action
      *
@@ -54,20 +44,22 @@ class FileSaver
 
             $upload = $resource->getUpload();
 
-            $dir = $this->getUploadDir(get_class($resource));
-
-            if (!is_dir($dir)) {
-                mkdir($dir, 0777, true);
+            if (!$resource->getName()) {
+                $resource->setName($upload->getClientOriginalName());
             }
 
-            $realname = sha1(uniqid(mt_rand(), true));
+            $realname = sha1(uniqid(mt_rand(), true)) . '.' . pathinfo($resource->getName(), PATHINFO_EXTENSION);
 
             $resource->setMimeType($upload->getMimeType());
             $resource->setSize($upload->getMimeType());
             $resource->setRealname($realname);
 
-            if (!$resource->getName()) {
-                $resource->setName($upload->getClientOriginalName());
+            $path = $resource->getFullPath($this->container->getParameter('uebb.hateoas.upload_dir'));
+
+            $dir = dirname($path);
+
+            if (!is_dir($dir)) {
+                mkdir($dir, 0777, true);
             }
 
             $upload->move($dir, $realname);

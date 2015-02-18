@@ -8,8 +8,8 @@ parameters:
     uebb.hateoas.permission_checker.class: uebb\HateoasBundle\EventListener\PermissionChecker
     uebb.hateoas.encoder_injector.class: uebb\HateoasBundle\EventListener\EncoderInjector
     uebb.hateoas.file_saver.class: uebb\HateoasBundle\EventListener\FileSaver
-    uebb.hateoas.form_resolver.class : uebb\HateoasBundle\Service\FormResolver
-
+    uebb.hateoas.form_resolver.class: uebb\HateoasBundle\Service\FormResolver
+    uebb.hateoas.image_resizer.class: uebb\HateoasBundle\Service\ImageResizer
 
 services:
 
@@ -98,6 +98,10 @@ services:
         calls:
             - [setRoleHierarchy, [@security.role_hierarchy]]
 
+    uebb.hateoas.image_resizer:
+        class: %uebb.hateoas.image_resizer.class%
+        arguments:
+            - @service_container
 
 
 

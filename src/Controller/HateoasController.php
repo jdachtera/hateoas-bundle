@@ -113,27 +113,25 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function getDownloadAction($id, Request $request)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
-
-
         if ($resource instanceof File) {
-            if (in_array($resource->getMimeType(), array('image/jpeg', 'image/png', 'image/gif'))) {
-                return (new ImageDownloadView(
-                    $this->get('uebb.hateoas.file_saver')->getUploadDir(get_class($resource)) . '/' . $resource->getRealname(),
-                    $resource->getName(),
-                    $resource->getMimeType(),
-                    $request,
-                    FALSE
-                ))->getResponse();
-            } else {
 
-                return (new FileDownloadView(
-                    $this->get('uebb.hateoas.file_saver')->getUploadDir(get_class($resource)) . '/' . $resource->getRealname(),
-                    $resource->getName(),
-                    $resource->getMimeType(),
-                    $request,
-                    FALSE
-                ))->getResponse();
+            $filename = $resource->getFullPath($this->container->getParameter('uebb.hateoas.upload_dir'));
+
+            if (in_array($resource->getMimeType(), array('image/jpeg', 'image/png', 'image/gif'))) {
+
+                $filename = $this->get('uebb.hateoas.image_resizer')->resizeImage(
+                    $resource,
+                    intval($request->query->get('width', '0'), 10),
+                    intval($request->query->get('height', '0'), 10),
+                    10,
+                    $request->query->get('format', 'png')
+                );
+
             }
+
+            $displayName = pathinfo($resource->getName(), PATHINFO_BASENAME) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+
+            return (new FileDownloadView($filename, $displayName, $request, FALSE))->getResponse();
 
         } else {
             throw new MethodNotAllowedHttpException(array());

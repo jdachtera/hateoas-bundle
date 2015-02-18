@@ -2,27 +2,48 @@
 /**
  * Created by PhpStorm.
  * User: jascha
- * Date: 16.02.15
- * Time: 17:51
+ * Date: 18.02.15
+ * Time: 13:29
  */
 
-namespace uebb\HateoasBundle\View;
+namespace uebb\HateoasBundle\Service;
 
-use Symfony\Component\HttpFoundation\Request;
+
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use uebb\HateoasBundle\Entity\File;
 
-class ImageDownloadView extends FileDownloadView
+class ImageResizer
 {
+    /**
+     * @var ContainerInterface
+     */
+    protected $container;
 
-    protected function serveFile($filename, $displayName, $mimeType, Request $request, $asAttachment = false)
+    protected $formats = array();
+
+
+    public function __construct(ContainerInterface $container)
     {
-        $targetWidth = intval($request->query->get('width', '0'), 10);
-        $targetHeight = intval($request->query->get('height', '0'), 10);
+        $this->container = $container;
 
-        $allowedStep = 10;
+        foreach(array('png', 'jpeg', 'webp', 'gif') as $format) {
+            if (function_exists('image' . $format)) {
+                $this->formats[] = $format;
+            }
+        }
+    }
+
+    public function resizeImage(File $file, $targetWidth, $targetHeight, $allowedStep = 10, $targetFormat = 'png')
+    {
+        if (!in_array($targetFormat, $this->formats)) {
+            $targetFormat = 'png';
+        }
 
         $targetHeight = (int)round($targetHeight / $allowedStep) * $allowedStep;
         $targetWidth = (int)round($targetWidth / $allowedStep) * $allowedStep;
+
+        $filename = $file->getFullPath($this->container->getParameter('uebb.hateoas.upload_dir'));
 
         try {
             list($sourceWidth, $sourceHeight, $type) = getimagesize($filename);
@@ -50,20 +71,10 @@ class ImageDownloadView extends FileDownloadView
             $targetHeight = (int)($targetWidth / $sourceRatio);
         }
 
-        $cache_filename = $filename . '-' . strval($targetWidth) . 'x' . strval($targetHeight);
+        $cache_filename = $file->getFullPath($this->container->getParameter('uebb.hateoas.cache_dir')) . '-' . strval($targetWidth) . 'x' . strval($targetHeight) . '.' . $targetFormat;
 
 
-        $displayName = pathinfo($displayName, PATHINFO_FILENAME);
-        if ($targetHeight !== $sourceHeight && $targetWidth !== $sourceWidth) {
-            $displayName .= '-' . $targetWidth . 'x' . $targetHeight . '.jpeg';
-        }
-        $displayName .= '.jpeg';
-
-        if (is_file($cache_filename)) {
-            return parent::serveFile($cache_filename, $displayName, 'image/jpeg', $request, $asAttachment);
-        } else {
-
-
+        if (!is_file($cache_filename)) {
             switch ($type) {
                 case IMAGETYPE_GIF:
                     $sourceImage = imagecreatefromgif($filename);
@@ -87,12 +98,25 @@ class ImageDownloadView extends FileDownloadView
                 mkdir($dir, 0770, TRUE);
             }
 
-            imagejpeg($targetImage, $cache_filename, 100);
+            switch($targetFormat) {
+                case 'png':
+                    imagepng($targetImage, $cache_filename, 9, PNG_ALL_FILTERS);
+                    break;
+                case 'jpeg':
+                    imagejpeg($targetImage, $cache_filename, 100);
+                    break;
+                case 'webp':
+                    imagewebp($targetImage, $cache_filename);
+                    break;
+                case 'gif':
+                    imagegif($targetImage, $cache_filename);
+                    break;
+            }
+
             imagedestroy($sourceImage);
             imagedestroy($targetImage);
-
-            return parent::serveFile($cache_filename, $displayName, 'image/jpeg', $request, $asAttachment);
-
         }
+
+        return $cache_filename;
     }
 }

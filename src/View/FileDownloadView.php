@@ -19,19 +19,22 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 class FileDownloadView extends View
 {
 
-    public function __construct($filename, $displayName, $mimeType, Request $request, $asAttachment = false)
+    public function __construct($filename, $displayName, Request $request, $asAttachment = false)
     {
         parent::__construct();
-        $this->setResponse($this->serveFile($filename, $displayName, $mimeType, $request, $asAttachment));
+        $this->setResponse($this->serveFile($filename, $displayName, $request, $asAttachment));
     }
 
-    protected function serveFile($filename, $displayName, $mimeType, Request $request, $asAttachment = false)
+    protected function serveFile($filename, $displayName, Request $request, $asAttachment = false)
     {
 
         $lastModified = new \DateTime();
         $lastModified->setTimestamp(filemtime($filename));
 
         $ifModifiedSince = $request->headers->has('If-Modified-Since') ? new \DateTime($request->headers->get('If-Modified-Since')) : false;
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $filename);
 
         $response = new BinaryFileResponse($filename);
         $response->setMaxAge(10);
