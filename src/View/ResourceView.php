@@ -22,7 +22,9 @@ class ResourceView extends View {
     {
         parent::__construct($router);
 
-        $contentType = 'application/' . strtolower(str_replace('\\', '.', get_class($resource))) . '+json';
+        //$contentType = 'application/' . strtolower(str_replace('\\', '.', get_class($resource))) . '+json';
+
+        $contentType = 'application/vnd.uebb.hateoas.resource+json';
 
         $this->setData($resource);
         $this->setHeader('Content-Type', $contentType);

@@ -122,12 +122,15 @@ class User extends Resource implements UserInterface
     public function setPlainPassword($plainPassword)
     {
 
-        if ($this->encoder) {
-            $this->salt = base_convert(sha1(uniqid(mt_rand(), true)), 16, 36);
-            $this->password = $this->encoder->encodePassword($plainPassword, $this->salt);
+        if (trim($plainPassword) !== '') {
+            if ($this->encoder) {
+                $this->salt = base_convert(sha1(uniqid(mt_rand(), true)), 16, 36);
+                $this->password = $this->encoder->encodePassword($plainPassword, $this->salt);
+            }
+
+            $this->plainPassword = $plainPassword;
         }
 
-        $this->plainPassword = $plainPassword;
     }
 
     /**
@@ -191,7 +194,7 @@ class User extends Resource implements UserInterface
      */
     public function eraseCredentials()
     {
-        $this->password = '';
+        $this->plainPassword = '';
     }
     /**
      * @param array $roles

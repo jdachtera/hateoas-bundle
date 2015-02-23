@@ -20,6 +20,7 @@ services:
             - @router
             - @logger
             - @service_container
+            - @security.token_storage
 
     uebb.hateoas.link_parser:
         class: %uebb.hateoas.link_parser.class%

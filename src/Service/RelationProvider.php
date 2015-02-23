@@ -18,8 +18,10 @@ use Symfony\Bridge\Monolog\Logger;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouterInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 use uebb\HateoasBundle\Entity\Root;
+use uebb\HateoasBundle\Entity\User;
 
 /**
  * Class RelationProvider
@@ -46,6 +48,11 @@ class RelationProvider
      */
     protected $logger;
 
+    /**
+     * @var TokenStorageInterface
+     */
+    protected $tokenStorage;
+
 
     /**
      * @param EntityManager $entityManager
@@ -53,12 +60,13 @@ class RelationProvider
      * @param Logger $logger
      * @param ContainerInterface $container
      */
-    public function __construct(EntityManager $entityManager, RouterInterface $router, Logger $logger, ContainerInterface $container)
+    public function __construct(EntityManager $entityManager, RouterInterface $router, Logger $logger, ContainerInterface $container, TokenStorageInterface $tokenStorage)
     {
         $this->entityManager = $entityManager;
         $this->router = $router;
         $this->logger = $logger;
         $this->container = $container;
+        $this->tokenStorage = $tokenStorage;
     }
 
     /**
@@ -93,7 +101,7 @@ class RelationProvider
                     new Hateoas\Route(
                         $selfRoute,
                         array('id' => 'expr(object.getId())'),
-                        TRUE
+                        FALSE
                     ),
                     null,
                     array(),
@@ -114,7 +122,7 @@ class RelationProvider
                     new Hateoas\Route(
                         $downloadRoute,
                         array('id' => 'expr(object.getId())'),
-                        TRUE
+                        FALSE
                     ),
                     null,
                     array(),
@@ -160,7 +168,7 @@ class RelationProvider
                     } else {
                         $embedded = NULL;
                     }
-                    $relations[] = new Hateoas\Relation($associationName, new Hateoas\Route($routeName, $args, TRUE), $embedded, array(), $exclusion);
+                    $relations[] = new Hateoas\Relation($associationName, new Hateoas\Route($routeName, $args, FALSE), $embedded, array(), $exclusion);
                 }
             }
             if (count($notExistingRoutes)) {
@@ -192,12 +200,25 @@ class RelationProvider
                 if ($routeName) {
                     $route = $this->router->getRouteCollection()->get($routeName);
                     if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
-                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array(), TRUE));
+                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array(), FALSE));
                     }
                 }
             }
-
         }
+
+        $user = $this->tokenStorage->getToken()->getUser();
+
+
+        if ($user instanceof User) {
+
+            $routeName = $this->findRoute(get_class($user), 'getAction');
+            if($routeName) {
+                $relations[] = new Hateoas\Relation('currentUser', new Hateoas\Route($routeName, array(
+                    'id' => $user->getId()
+                ), FALSE));
+            }
+        }
+
         return $relations;
     }
 

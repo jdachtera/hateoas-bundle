@@ -99,7 +99,7 @@ class ResourceCollectionView extends View {
 
         $pagerfanta->setCurrentPage($page);
 
-        $route = new Route($request->get('_route'), $request->attributes->get('_route_params'), true);
+        $route = new Route($request->get('_route'), $request->attributes->get('_route_params'), FALSE);
 
         return new QueryablePaginatedRepresentation(
             new CollectionRepresentation($pagerfanta->getCurrentPageResults()),
