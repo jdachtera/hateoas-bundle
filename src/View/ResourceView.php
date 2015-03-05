@@ -24,10 +24,12 @@ class ResourceView extends View {
 
         //$contentType = 'application/' . strtolower(str_replace('\\', '.', get_class($resource))) . '+json';
 
-        $contentType = 'application/vnd.uebb.hateoas.resource+json';
+        //$contentType = 'application/vnd.uebb.hateoas.resource+json';
+
+        //$this->setHeader('Content-Type', $contentType);
 
         $this->setData($resource);
-        $this->setHeader('Content-Type', $contentType);
+
 
 /*
 

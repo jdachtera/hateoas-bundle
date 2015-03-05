@@ -83,7 +83,8 @@ services:
         arguments:
             - @service_container
         tags:
-            - { name: kernel.event_listener, event: uebb.hateoas.action_post_post, method:onActionEvent }
+            - { name: kernel.event_listener, event: uebb.hateoas.action_post_post, method:onPostPost }
+            - { name: kernel.event_listener, event: uebb.hateoas.action_persist_remove, method:onPersistRemove }
 
     uebb.hateoas.encoder_injector:
         class: %uebb.hateoas.encoder_injector.class%

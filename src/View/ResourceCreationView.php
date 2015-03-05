@@ -17,7 +17,7 @@ class ResourceCreationView extends View {
      * @param RouterInterface $router
      * @param array $validationErrors
      */
-    public function __construct(RouterInterface $router, ResourceInterface $resource)
+    public function __construct(RouterInterface $router, ResourceInterface $resource, array $patch)
     {
         parent::__construct($router);
 
@@ -26,6 +26,8 @@ class ResourceCreationView extends View {
 
         // set the `Location` header when creating new resources
         $this->setHeader('Location', $this->generateUrl($routeName, array('id' => $resource->getId()), true));
+
+        $this->setData($patch);
     }
 
 

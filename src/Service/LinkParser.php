@@ -63,7 +63,7 @@ class LinkParser
                 $resource = trim(preg_replace('/<|>/', '', array_shift($linkParams)));
                 $rel = trim(preg_replace('/rel="|"/', '', array_shift($linkParams)));
 
-                $linkTable[$rel][] = $resource;
+                $linkTable[$rel][] = array('href' => $resource);
             }
 
             return $linkTable;
@@ -83,7 +83,7 @@ class LinkParser
                     $rel_links = array();
                     foreach ($resources as $resource) {
 
-                        $rel_links[] = $resource['href'];
+                        $rel_links[] = array('href' => $resource['href']);
                     }
                     $links[$rel] = $rel_links;
                 }

@@ -32,7 +32,7 @@ class ResourceCollectionView extends View {
         parent::__construct($router);
 
         $this->setData($this->getPagerfantaRepresentation($request, new DoctrineORMAdapter($queryBuilder)));
-        $this->setHeader('Content-Type', 'application/vnd.uebb.hateoas.collection+json');
+        //$this->setHeader('Content-Type', 'application/vnd.uebb.hateoas.collection+json');
 
 
         /**

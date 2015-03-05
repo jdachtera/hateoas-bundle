@@ -35,7 +35,7 @@ class FileSaver
      * @param ActionEvent $event
      * @throws AccessDeniedHttpException
      */
-    public function onActionEvent(ActionEvent $event)
+    public function onPostPost(ActionEvent $event)
     {
 
         $resource = $event->getData()->getResource();
@@ -64,6 +64,27 @@ class FileSaver
 
             $upload->move($dir, $realname);
 
+        }
+
+    }
+
+    /**
+     * Check the permission's of a crud action
+     *
+     * @param ActionEvent $event
+     * @throws AccessDeniedHttpException
+     */
+    public function onPersistRemove(ActionEvent $event)
+    {
+
+        $resource = $event->getData()->getResource();
+
+        if ($resource instanceof File) {
+            $path = $resource->getFullPath($this->container->getParameter('uebb.hateoas.upload_dir'));
+
+            if (is_file($path)) {
+                unlink($path);
+            }
         }
 
     }

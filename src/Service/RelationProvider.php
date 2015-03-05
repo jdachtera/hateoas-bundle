@@ -53,6 +53,10 @@ class RelationProvider
      */
     protected $tokenStorage;
 
+    protected static $IMAGE_ARGUMENTS = array('width', 'height', 'format');
+
+
+    protected static $COLLECTION_ARGUMENTS = array('where', 'order', 'limit', 'page');
 
     /**
      * @param EntityManager $entityManager
@@ -117,11 +121,19 @@ class RelationProvider
             if (is_subclass_of($classMetadata->getName(), 'uebb\\HateoasBundle\\Entity\\File')) {
                 $downloadRoute = $this->findRoute($classMetadata->getName(), 'getDownloadAction');
 
+                $arguments = array('id' => 'expr(object.getId())');
+
+                if (in_array('uebb\\HateoasBundle\\Entity\\ImageInterface', class_implements($classMetadata->getName()))) {
+                    foreach(self::$IMAGE_ARGUMENTS as $argument) {
+                        $arguments[$argument] = '{' . $argument . '}';
+                    }
+                }
+
                 $relations[] = new Hateoas\Relation(
                     'download',
                     new Hateoas\Route(
                         $downloadRoute,
-                        array('id' => 'expr(object.getId())'),
+                        $arguments,
                         FALSE
                     ),
                     null,
@@ -188,6 +200,10 @@ class RelationProvider
         $prefixLength = strlen($prefix);
 
         $relations = array();
+
+        $self_args = $this->router->match($object->getPrefix());
+        $relations[] = new Hateoas\Relation('self', new Hateoas\Route($self_args['_route'], array(), FALSE));
+
         foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $metadata) {
             /** @var ClassMetadata $metadata */
             $metadata = $metadata;
@@ -200,7 +216,18 @@ class RelationProvider
                 if ($routeName) {
                     $route = $this->router->getRouteCollection()->get($routeName);
                     if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
-                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array(), FALSE));
+                        $arguments = array();
+                        foreach(self::$COLLECTION_ARGUMENTS as $argument) {
+                            $arguments[$argument] = '{' . $argument . '}';
+                        }
+                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, $arguments, FALSE));
+                    }
+                }
+                $routeName = $this->findRoute($metadata->getName(), 'getAction');
+                if ($routeName) {
+                    $route = $this->router->getRouteCollection()->get($routeName);
+                    if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
+                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array('id' => "{id}"), FALSE));
                     }
                 }
             }

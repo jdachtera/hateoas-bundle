@@ -264,7 +264,7 @@ class RequestProcessor
      * @param Request $request - The http request
      * @param ResourceInterface|NULL $resource - The resource
      */
-    public function createResource($entityName, Request $request)
+    public function createResource($entityName, array $data, array $links = array())
     {
         $resourceClassName = $this->getClassMetadata($entityName)->getName();
 
@@ -272,29 +272,13 @@ class RequestProcessor
 
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PostActionEventData($entityName, $resource)));
 
-        $links = $this->linkResolver->resolveResourceLinks(
-            $this->linkParser->parseLinks($request)
-        );
+        $links = $this->linkResolver->resolveResourceLinks($links);
 
         $this->addLinks($entityName, $resource, $links);
 
         $form = $this->formResolver->getForm($resource);
 
-        $data = array();
-
-        foreach ($request->request->getIterator() as $k => $v) {
-            $data[$k] = $v;
-            $request->request->remove($k);
-        }
-        $files = array();
-        foreach ($request->files->getIterator() as $k => $v) {
-            $files[$k] = $v;
-        }
-        $request->files->add(array($form->getName() => $files));
-        $request->request->set($form->getName(), $data);
-        $form->handleRequest($request);
-
-
+        $form->submit($data, FALSE);
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new PostActionEventData($entityName, $resource)));
 
         return $resource;
@@ -546,7 +530,7 @@ class RequestProcessor
         $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
     }
 
-    public function patchResource($entityName, $resource, array $actions)
+    public function applyPatch($entityName, $resource, array $patch)
     {
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchActionEventData($entityName, $resource)));
 
@@ -560,7 +544,7 @@ class RequestProcessor
 
         $data = array();
 
-        foreach ($actions as $action) {
+        foreach ($patch as $action) {
             if (!isset($action['op'])) {
                 throw new \InvalidArgumentException('No operation given.');
             }
@@ -625,6 +609,107 @@ class RequestProcessor
         }
 
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchActionEventData($entityName, $resource)));
+    }
+
+    public function getPatch(array $oldData, array $newData)
+    {
+        $linksProperty = '_links';
+        
+        $oldLinks = $oldData[$linksProperty];
+        $newLinks = $newData[$linksProperty];
+
+        unset($oldData[$linksProperty]);
+        unset($newData[$linksProperty]);
+
+        unset($oldData['_embedded']);
+        unset($newData['_embedded']);
+
+        $properties = array_unique(array_merge(array_keys($oldData), array_keys($newData)));
+
+        $patch = array();
+
+        // Fill with default values
+        $oldData = array_merge($oldData, array_fill_keys(array_diff($properties, array_keys($oldData)), null));
+        $newData = array_merge($newData, array_fill_keys(array_diff($properties, array_keys($newData)), null));
+
+
+
+        foreach($properties as $property) {
+            if (json_encode($oldData[$property]) !== json_encode($newData[$property])) {
+                $patch[] = array('op' => 'replace', 'path' => '/' . $property, 'value' => $newData[$property]);
+            }
+        }
+
+        $rels = array_unique(array_merge(array_keys($oldLinks), array_keys($newLinks)));
+
+        $oldLinks = array_merge($oldLinks, array_fill_keys(array_diff($rels, array_keys($oldLinks)), null));
+        $newLinks = array_merge($newLinks, array_fill_keys(array_diff($rels, array_keys($newLinks)), null));
+
+        foreach($rels as $rel) {
+            $currentOldLinks = array();
+            $currentNewLinks = array();
+
+
+            if (is_array($oldLinks[$rel])) {
+                // If it is a numeric array
+                if (array_keys($oldLinks[$rel]) === range(0, count($oldLinks[$rel]) - 1)) {
+                    $currentOldLinks = $oldLinks[$rel];
+
+                } else {
+                    if ($oldLinks[$rel]) {
+                        $currentOldLinks[] = $oldLinks[$rel];
+                    }
+                }
+            }
+
+            if (is_array($newLinks[$rel])) {
+                // If it is a numeric array
+                if (array_keys($newLinks[$rel]) === range(0, count($newLinks[$rel]) - 1)) {
+                    $currentNewLinks = $newLinks[$rel];
+                } else {
+                    if ($newLinks[$rel]) {
+                        $currentNewLinks[] = $newLinks[$rel];
+                    }
+                }
+            }
+
+            $removed = array();
+            foreach($currentOldLinks as $oldLink) {
+
+                $isInNew = false;
+                foreach($currentNewLinks as $newLink) {
+                    if ($oldLink['href'] === $newLink['href']) {
+                        $isInNew = true;
+                    }
+                }
+                if (!$isInNew) {
+                    $removed[] = $oldLink;
+                }
+            }
+
+            if (count($removed)) {
+                $patch[] = array('op' => 'remove', 'path' => '/' . $linksProperty . '/' . $rel, 'value' => $removed);
+            }
+
+            $added = array();
+            foreach($currentNewLinks as $new) {
+                $isInOld = false;
+                foreach($currentOldLinks as $oldLink) {
+                    if ($newLink['href'] === $oldLink['href']) {
+                        $isInOld = true;
+                    }
+                }
+                if (!$isInOld) {
+                    $added[] = $newLink;
+                }
+            }
+
+            if (count($added)) {
+                $patch[] = array('op' => 'add', 'path' => '/' . $linksProperty . '/' . $rel, 'value' => $added);
+            }
+        }
+
+        return $patch;
     }
 
 

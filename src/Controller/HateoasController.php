@@ -19,6 +19,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\Validator\Validator\RecursiveValidator;
 use uebb\HateoasBundle\Entity\File;
+use uebb\HateoasBundle\Entity\ImageInterface;
 use uebb\HateoasBundle\Event\ActionEvent;
 use uebb\HateoasBundle\Event\PatchActionEventData;
 use uebb\HateoasBundle\Event\PostActionEventData;
@@ -117,7 +118,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
 
             $filename = $resource->getFullPath($this->container->getParameter('uebb.hateoas.upload_dir'));
 
-            if (in_array($resource->getMimeType(), array('image/jpeg', 'image/png', 'image/gif'))) {
+            if ($resource instanceof ImageInterface) {
 
                 $filename = $this->get('uebb.hateoas.image_resizer')->resizeImage(
                     $resource,
@@ -179,7 +180,10 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
      */
     public function postAction(Request $request)
     {
-        $resource = $this->getRequestProcessor()->createResource($this->entityName, $request);
+        $links = $this->get('uebb.hateoas.link_parser')->parseLinks($request);
+        $data = array_merge_recursive($request->request->all(), $request->files->all());
+
+        $resource = $this->getRequestProcessor()->createResource($this->entityName, $data, $links);
         $validationErrors = $this->getValidator()->validate($resource);
 
         if ($validationErrors->count() > 0) {
@@ -190,7 +194,10 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
 
             $this->getRequestProcessor()->dispatchActionEvent(new ActionEvent(ActionEvent::PERSIST, new PostActionEventData($this->entityName, $resource)));
 
-            return new ResourceCreationView($this->get('router'), $resource);
+            $oldData = array_merge($data, array('_links' => $links));
+            $newData = json_decode($this->get('serializer')->serialize($resource, 'json'), true);
+
+            return new ResourceCreationView($this->get('router'), $resource, $this->getRequestProcessor()->getPatch($oldData, $newData));
         }
     }
 

@@ -80,7 +80,7 @@ class LinkResolver
 
         foreach ($links as $rel => $resources) {
             foreach ($resources as $resource) {
-                $value = $this->resolveResourceLink($resource, $stubRequest);
+                $value = $this->resolveResourceLink($resource['href'], $stubRequest);
                 if ($value === null) {
                     throw new BadRequestHttpException('Resource \'' . $resource . '\' could not be resolved');
                 }
