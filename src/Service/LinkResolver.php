@@ -28,7 +28,7 @@ use uebb\HateoasBundle\Exception\InvalidLinkException;
  *
  * @package uebb\HateoasBundle\Service
  */
-class LinkResolver
+class LinkResolver implements LinkResolverInterface
 {
 
     /**

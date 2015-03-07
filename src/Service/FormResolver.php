@@ -21,7 +21,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Security\Core\Util\ClassUtils;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 
-class FormResolver
+class FormResolver implements FormResolverInterface
 {
 
     /**

@@ -13,7 +13,7 @@ use Symfony\Component\HttpKernel\Event\GetResponseEvent;
  *
  * @package uebb\HateoasBundle\Service
  */
-class LinkParser
+class LinkParser implements LinkParserInterface
 {
     /**
      * @param GetResponseEvent $event

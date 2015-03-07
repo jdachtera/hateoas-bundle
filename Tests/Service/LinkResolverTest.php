@@ -9,6 +9,7 @@
 namespace uebb\HateoasBundle\Test\Service;
 
 
+use Monolog\Handler\MailHandlerTest;
 use Symfony\Component\HttpFoundation\Request;
 use uebb\HateoasBundle\Controller\HateoasController;
 use uebb\HateoasBundle\Service\LinkResolver;
@@ -16,8 +17,6 @@ use uebb\HateoasBundle\View\ResourceView;
 
 class LinkResolverTest extends \PHPUnit_Framework_TestCase
 {
-
-
     private $controller;
 
     private $controllerResolver;
@@ -32,65 +31,74 @@ class LinkResolverTest extends \PHPUnit_Framework_TestCase
 
     private $mockResource;
 
-    public function __construct()
+    public function init()
     {
-        $this->mockResource = $this->getMock('uebb\HateoasBundle\Entity\Resource');
+        if (!$this->mockResource) {
+            $this->mockResource = $this->getMock('uebb\HateoasBundle\Entity\ResourceInterface');
+        }
 
         $this->controller = $this->getMock('uebb\HateoasBundle\Controller\HateoasController');
+        $this->controllerResolver = $this->getMock('Symfony\Component\HttpKernel\Controller\ControllerResolverInterface');
+        $this->urlMatcher = $this->getMock('Symfony\Component\Routing\Matcher\UrlMatcherInterface');
+        $this->httpKernel = $this->getMock('Symfony\Component\HttpKernel\HttpKernelInterface');
+        $this->dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
+        $this->linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
+        
+        $this->context = new \Symfony\Component\Routing\RequestContext();
+
+        $this->urlMatcher->expects($this->any())
+            ->method('getContext')
+            ->willReturn($this->context);
+        
         $this->controller->expects($this->any())
             ->method('getAction')
-            ->willReturn(new ResourceView($this->getMock('Symfony\Component\Routing\RouterInterface'), $this->mockResource));
-
-        $this->controllerResolver = $this->getMock('Symfony\Component\HttpKernel\Controller\ControllerResolverInterface');
-
-        $this->controllerResolver->expects($this->any())
-            ->method('getController')
-            ->willReturn(array($this->controller, 'getAction'));
+            ->willReturn($this->mockResource);
 
         $this->controllerResolver->expects($this->any())
             ->method('getArguments')
             ->willReturn(array('id' => 1, 'request' => new Request()));
 
-        $this->context = new \Symfony\Component\Routing\RequestContext();
-
-        $this->urlMatcher = $this->getMock('Symfony\Component\Routing\Matcher\UrlMatcherInterface');
-
+        $this->controllerResolver->expects($this->any())
+            ->method('getController')
+            ->willReturn(array($this->controller, 'getAction'));
+        
         $this->urlMatcher->expects($this->any())
             ->method('match')
-            ->with('/test/1')
-            ->willReturn(array(
-                '_controller' => 'Test',
-                '_action' => 'getAction',
-                '_method' => 'GET',
-                'id' => 1
-            ));
+            ->willReturnCallback(function($path) {
+                if ($path === '/test/1') {
+                    return array(
+                        '_controller' => 'Test',
+                        '_action' => 'getAction',
+                        '_method' => 'GET',
+                        'id' => 1
+                    );
+                } else {
+                    throw new \Symfony\Component\Routing\Exception\ResourceNotFoundException();
+                }
+            });
+    }
 
-        $this->urlMatcher->expects($this->any())
-            ->method('getContext')
-            ->willReturn($this->context);
-
-        $this->httpKernel = $this->getMock('Symfony\Component\HttpKernel\HttpKernelInterface');
-
-        $this->dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
-
+    public function getMockResource()
+    {
+        return $this->mockResource;
     }
 
     public function testLinkResolve()
     {
-        $linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
-        $this->assertEquals($this->mockResource, $linkResolver->resolveResourceLink('http://localhost/test/1'));
+        $this->init();
+        $this->assertEquals($this->mockResource, $this->linkResolver->resolveResourceLink('http://localhost/test/1'));
     }
 
     public function testMultipleLinkResolve()
     {
-        $linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
+        $this->init();
         $this->assertEquals(
             array(
                 'test' => array(
                     $this->mockResource
                 )
             ),
-            $linkResolver->resolveResourceLinks(
+            $this->linkResolver->resolveResourceLinks(
                 array(
                     'test' => array(
                         array(
@@ -107,8 +115,8 @@ class LinkResolverTest extends \PHPUnit_Framework_TestCase
      */
     public function testExternalUrl()
     {
-        $linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
-        $linkResolver->resolveResourceLink('http://external.com/test/1');
+        $this->init();
+        $this->linkResolver->resolveResourceLink('http://external.com/test/1');
     }
 
     /**
@@ -116,22 +124,15 @@ class LinkResolverTest extends \PHPUnit_Framework_TestCase
      */
     public function testNonExisting()
     {
-        $linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
-        $this->urlMatcher->expects($this->any())
-            ->method('match')
-            ->with('/unknown/1')
-            ->willThrowException(new \Symfony\Component\Routing\Exception\ResourceNotFoundException());
-
-        $linkResolver->resolveResourceLink('http://localhost/unknown/1');
+        $this->init();
+        $this->linkResolver->resolveResourceLink('http://localhost/unknown/1');
     }
 
     public function testControllerReturningView()
     {
-
-
-        $linkResolver = new LinkResolver($this->controllerResolver, $this->urlMatcher, $this->httpKernel, $this->dispatcher);
-
-        $this->assertEquals($this->mockResource, $linkResolver->resolveResourceLink('http://localhost/test/1'));
-
+        $mockResource = $this->getMock('uebb\HateoasBundle\Entity\ResourceInterface');
+        $this->mockResource = new ResourceView($this->getMock('Symfony\Component\Routing\RouterInterface'), $mockResource);
+        $this->init();
+        $this->assertEquals($mockResource, $this->linkResolver->resolveResourceLink('http://localhost/test/1'));
     }
 }

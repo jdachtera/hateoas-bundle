@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
-class QueryParser
+class QueryParser implements QueryParserInterface
 {
 
     /**
@@ -50,7 +50,7 @@ class QueryParser
         return $this->container->get('doctrine_cache.providers.uebb_hateoas_query_cache');
     }
 
-    public function getPropertyAnnotation($entityName, $propertyName, $annotation)
+    protected function getPropertyAnnotation($entityName, $propertyName, $annotation)
     {
         $reflectionClass = new \ReflectionClass($this->entityManager->getMetadataFactory()->getMetadataFor($entityName)->getName());
         $propertyReflection = $reflectionClass->getProperty($propertyName);

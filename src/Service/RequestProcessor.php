@@ -13,10 +13,10 @@ use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
 use Doctrine\Common\Util\ClassUtils;
 use Doctrine\Common\Util\Debug;
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use JMS\Serializer\Serializer;
+use JMS\Serializer\SerializerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormFactory;
@@ -46,22 +46,22 @@ use uebb\HateoasBundle\Event\RemoveLinkActionEventData;
 class RequestProcessor
 {
     /**
-     * @var EntityManager
+     * @var EntityManagerInterface
      */
     protected $entityManager;
 
     /**
-     * @var LinkParser
+     * @var LinkParserInterface
      */
     protected $linkParser;
 
     /**
-     * @var LinkResolver
+     * @var LinkResolverInterface
      */
     protected $linkResolver;
 
     /**
-     * @var FormResolver
+     * @var FormResolverInterface
      */
     protected $formResolver;
 
@@ -71,22 +71,22 @@ class RequestProcessor
     protected $dispatcher;
 
     /**
-     * @var QueryParser
+     * @var QueryParserInterface
      */
     protected $queryParser;
 
     /**
-     * @var Serializer
+     * @var SerializerInterface
      */
     protected $serializer;
 
     /**
-     * @var Validator
+     * @var Validator\ValidatorInterface
      */
     protected $validator;
 
 
-    public function __construct(EntityManagerInterface $entityManager, LinkParser $linkParser, LinkResolver $linkResolver, FormResolver $formResolver, EventDispatcherInterface $dispatcher, QueryParser $queryParser, Serializer $serializer, Validator\RecursiveValidator $validator)
+    public function __construct(EntityManagerInterface $entityManager, LinkParserInterface $linkParser, LinkResolverInterface $linkResolver, FormResolverInterface $formResolver, EventDispatcherInterface $dispatcher, QueryParserInterface $queryParser, SerializerInterface $serializer, Validator\ValidatorInterface $validator)
     {
         $this->entityManager = $entityManager;
         $this->linkParser = $linkParser;
