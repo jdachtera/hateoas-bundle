@@ -17,7 +17,7 @@ class LinkParser
 {
     /**
      * @param GetResponseEvent $event
-     * @return array|null
+     * @return array
      */
     public function parseLinks(Request $request)
     {
@@ -59,24 +59,26 @@ class LinkParser
                 $links = $request->request->get('_links');
                 $request->request->remove('_links');
 
-                forEach ($links as $rel => $resources) {
-                    if (!is_array($resources)) {
-                        throw new \InvalidArgumentException('Format must be _links: {..rel..: {href: ... }}');
-                    }
-                    if ((bool)count(array_filter(array_keys($resources), 'is_string'))) {
-                        $resources = array($resources);
-                    }
-                    $rel_links = array();
-                    foreach ($resources as $resource) {
+                if (is_array($links)) {
+                    $linkTable = array();
 
-                        $rel_links[] = array('href' => $resource['href']);
+                    forEach ($links as $rel => $resources) {
+                        if (is_array($resources)) {
+                            if ((bool)count(array_filter(array_keys($resources), 'is_string'))) {
+                                $resources = array($resources);
+                            }
+                            $rel_links = array();
+                            foreach ($resources as $resource) {
+
+                                $rel_links[] = array('href' => $resource['href']);
+                            }
+                            $linkTable[$rel] = $rel_links;
+                        }
                     }
-                    $links[$rel] = $rel_links;
+                    return $linkTable;
                 }
-
-                return $links;
             }
         }
+        return array();
     }
-
 }

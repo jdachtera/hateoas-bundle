@@ -23,19 +23,12 @@ class LinkParserTest extends \PHPUnit_Framework_TestCase {
         $this->linkParser = new LinkParser();
     }
 
-    public function testParseLinks()
+    public function testParseHeaderLinks()
     {
         $expected = array(
             'tests' => array(
                 array('href' => 'http://example.com/tests')
             ),
-            'first' => array(
-                array('href' => 'http://example.com/tests/1')
-            )
-        );
-
-        $_links = array(
-            'tests' => array('href' => 'http://example.com/tests'),
             'first' => array(
                 array('href' => 'http://example.com/tests/1')
             )
@@ -47,11 +40,46 @@ class LinkParserTest extends \PHPUnit_Framework_TestCase {
         $request->headers->set('Link', $header);
 
         $this->assertEquals($expected, $this->linkParser->parseLinks($request));
+    }
+
+    public function testParseBodyLinks()
+    {
+        $_links = array(
+            'tests' => array('href' => 'http://example.com/tests'),
+            'first' => array(
+                array('href' => 'http://example.com/tests/1')
+            )
+        );
+
+        $expected = array(
+            'tests' => array(
+                array('href' => 'http://example.com/tests')
+            ),
+            'first' => array(
+                array('href' => 'http://example.com/tests/1')
+            )
+        );
 
         $request = new Request();
         $request->request->set('_links', $_links);
 
         $this->assertEquals($expected, $this->linkParser->parseLinks($request));
+    }
 
+    public function testInvalidInputData()
+    {
+        $_invalid = array(
+            'tests' => 'http://example.com'
+        );
+
+        $request = new Request();
+        $request->request->set('_links', $_invalid);
+
+        $this->assertEquals(array(), $this->linkParser->parseLinks($request));
+    }
+
+    public function testEmptyInput()
+    {
+        $this->assertEquals(array(), $this->linkParser->parseLinks(new Request()));
     }
 }

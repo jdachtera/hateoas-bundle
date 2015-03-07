@@ -10,13 +10,12 @@ namespace uebb\HateoasBundle\View;
 
 
 use Doctrine\Common\Util\Debug;
-use FOS\RestBundle\View\View;
 use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
-class FileDownloadView extends View
+class FileDownloadView extends \FOS\RestBundle\View\View
 {
 
     public function __construct($filename, $displayName, Request $request, $asAttachment = false)

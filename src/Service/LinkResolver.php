@@ -9,14 +9,17 @@
 namespace uebb\HateoasBundle\Service;
 
 use FOS\RestBundle\View\View;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
 use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 use uebb\HateoasBundle\Entity\ResourceInterface;
+use uebb\HateoasBundle\Exception\InvalidLinkException;
 
 /**
  * Class ResourceLinkResolver
@@ -44,7 +47,7 @@ class LinkResolver
         ControllerResolverInterface $controllerResolver,
         UrlMatcherInterface $urlMatcher,
         HttpKernelInterface $kernel,
-        $dispatcher
+        EventDispatcherInterface $dispatcher
     )
     {
         $this->resolver = $controllerResolver;
@@ -64,73 +67,61 @@ class LinkResolver
      */
     public function resolveResourceLinks($links)
     {
-        if (!count($links)) {
-            return array();
+        $linkTable = array();
+
+        foreach ($links as $rel => $resources) {
+            foreach ($resources as $resource) {
+                $linkTable[$rel][] = $this->resolveResourceLink($resource['href']);
+            }
         }
 
-        // The controller resolver needs a request to resolve the controller.
-        $stubRequest = new Request();
+        return $linkTable;
+    }
+
+    /**
+     *
+     *
+     * @param $href - The resource link
+     * @return ResourceInterface
+     */
+    public function resolveResourceLink($href)
+    {
+        $stubRequest = Request::create($href);
+        // External url
+        if (
+            $this->urlMatcher->getContext()->getHost() !== $stubRequest->getHost() ||
+            ($stubRequest->isSecure() ?
+                $this->urlMatcher->getContext()->getHttpsPort() !== $stubRequest->getPort() :
+                $this->urlMatcher->getContext()->getHttpPort() !== $stubRequest->getPort()
+            ) ||
+            $this->urlMatcher->getContext()->getBaseUrl() !== $stubRequest->getBaseUrl()
+        ) {
+            throw new InvalidLinkException($href);
+        }
+
+        $path = $stubRequest->getPathInfo();
 
         $requestMethod = $this->urlMatcher->getContext()->getMethod();
         // Force the GET method to avoid the use of the
         // previous method (LINK/UNLINK)
         $this->urlMatcher->getContext()->setMethod('GET');
 
-        $linkTable = array();
-
-        foreach ($links as $rel => $resources) {
-            foreach ($resources as $resource) {
-                $value = $this->resolveResourceLink($resource['href'], $stubRequest);
-                if ($value === null) {
-                    throw new BadRequestHttpException('Resource \'' . $resource . '\' could not be resolved');
-                }
-                $linkTable[$rel][] = $value;
-            }
-        }
-        $this->urlMatcher->getContext()->setMethod($requestMethod);
-        return $linkTable;
-    }
-
-    /**
-     * Resolve a single HATEOAS link
-     *
-     * @param $resource - The resource link
-     * @param Request $sourceRequest - Optional source request
-     * @return ResourceInterface|null
-     */
-    public function resolveResourceLink($resource, Request $sourceRequest = null)
-    {
-        $stubRequest = Request::create($resource);
-        if ($sourceRequest !== NULL) {
-            $stubRequest->attributes->replace($sourceRequest->attributes->all());
-        }
-
-        $path = $stubRequest->getPathInfo();
-        $baseUrl = $this->urlMatcher->getContext()->getBaseUrl();
-
-        // External url
-        if (substr($path, 0, strlen($baseUrl)) !== $baseUrl) {
-            return $resource;
-        }
-
-        $path = substr($path, strlen($baseUrl));
-
         try {
             $route = $this->urlMatcher->match($path);
-        } catch (\Exception $e) {
-            // If we don't have a matching route we return
-            // the original Link header
-            return $resource;
+        } catch(ResourceNotFoundException $e) {
+            throw new InvalidLinkException($href);
         }
+
+        // Set back to original method
+        $this->urlMatcher->getContext()->setMethod($requestMethod);
+
         foreach ($route as $key => $attr) {
             $stubRequest->attributes->set($key, $attr);
         }
 
-
         if (false === $controller = $this->resolver->getController($stubRequest)) {
-            return null;
+            throw new InvalidLinkException($href);
         }
-
 
         // Make sure @ParamConverter and friends are handled
         $subEvent = new FilterControllerEvent($this->kernel, $controller, $stubRequest, HttpKernelInterface::MASTER_REQUEST);
@@ -140,11 +131,11 @@ class LinkResolver
         $arguments = $this->resolver->getArguments($stubRequest, $controller);
 
         $result = call_user_func_array($controller, $arguments);
+
         if ($result instanceof View) {
-            return $result->getData();
+            $result = $result->getData();
         }
         return $result;
     }
-
 
 }
