@@ -692,7 +692,7 @@ class RequestProcessor
             }
 
             $added = array();
-            foreach($currentNewLinks as $new) {
+            foreach($currentNewLinks as $newLink) {
                 $isInOld = false;
                 foreach($currentOldLinks as $oldLink) {
                     if ($newLink['href'] === $oldLink['href']) {
