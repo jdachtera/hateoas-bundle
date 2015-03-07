@@ -20,6 +20,10 @@
     "knplabs/doctrine-behaviors": "~1.0",
     "symfony/yaml": "~2.6"
   },
+  "require-dev": {
+    "phpunit/phpunit": "~4.5.0"
+
+  },
   "authors": [
     {
       "name": "Jascha Dachtera",

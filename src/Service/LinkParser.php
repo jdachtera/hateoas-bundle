@@ -15,20 +15,6 @@ use Symfony\Component\HttpKernel\Event\GetResponseEvent;
  */
 class LinkParser
 {
-
-    /**
-     * @var ControllerResolverInterface
-     */
-    private $resourceLinkResolver;
-
-    /**
-     * @param LinkResolver $resourceLinkResolver
-     */
-    public function __construct(LinkResolver $resourceLinkResolver)
-    {
-        $this->resourceLinkResolver = $resourceLinkResolver;
-    }
-
     /**
      * @param GetResponseEvent $event
      * @return array|null

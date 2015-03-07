@@ -24,8 +24,6 @@ services:
 
     uebb.hateoas.link_parser:
         class: %uebb.hateoas.link_parser.class%
-        arguments:
-           - @uebb.hateoas.link_resolver
 
     uebb.hateoas.link_resolver:
         class: %uebb.hateoas.link_resolver.class%
