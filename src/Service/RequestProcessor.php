@@ -11,16 +11,10 @@ namespace uebb\HateoasBundle\Service;
 
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Expr\Comparison;
-use Doctrine\Common\Util\ClassUtils;
-use Doctrine\Common\Util\Debug;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
-use JMS\Serializer\Serializer;
 use JMS\Serializer\SerializerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Form\Form;
-use Symfony\Component\Form\FormFactory;
-use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
@@ -101,7 +95,7 @@ class RequestProcessor
     /**
      * @param ActionEvent $event
      */
-    public function dispatchActionEvent(ActionEvent $event)
+    protected function dispatchActionEvent(ActionEvent $event)
     {
         $this->dispatcher->dispatch('uebb.hateoas.action', $event);
         $this->dispatcher->dispatch('uebb.hateoas.action_' .  $event->getId(), $event);
