@@ -12,11 +12,16 @@ namespace uebb\HateoasBundle\Test\Service;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
-use Symfony\Bridge\Doctrine\Test\DoctrineTestHelper;
+use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\FormFactory;
+use Symfony\Component\Form\FormRegistry;
+use Symfony\Component\Form\Test\TypeTestCase;
+use uebb\HateoasBundle\Service\FormResolver;
 use uebb\HateoasBundle\Service\RequestProcessor;
 
 
-class RequestProcessorTest extends \PHPUnit_Framework_TestCase
+class RequestProcessorTest extends TypeTestCase
 {
     /**
      * @var RequestProcessor
@@ -30,6 +35,10 @@ class RequestProcessorTest extends \PHPUnit_Framework_TestCase
      * @var \PHPUnit_Framework_MockObject_MockObject
      */
     protected $linkParser;
+    /**
+     * @var \PHPUnit_Framework_MockObject_MockObject
+     */
+    protected $linkResolver;
      /**
      * @var \PHPUnit_Framework_MockObject_MockObject
      */
@@ -51,12 +60,7 @@ class RequestProcessorTest extends \PHPUnit_Framework_TestCase
      */
     protected $validator;
 
-    /**
-     * Returns an entity manager for testing.
-     *
-     * @return EntityManager
-     */
-    protected static function createTestEntityManager()
+    private function init()
     {
         if (!class_exists('PDO') || !in_array('sqlite', \PDO::getAvailableDrivers())) {
             \PHPUnit_Framework_TestCase::markTestSkipped('This test requires SQLite support in your environment');
@@ -89,18 +93,15 @@ class RequestProcessorTest extends \PHPUnit_Framework_TestCase
             'memory' => true,
         );
 
-        return EntityManager::create($params, $config);
-    }
-
-    private function init()
-    {
-        $this->entityManager = $this->createTestEntityManager();
+        $this->entityManager = EntityManager::create($params, $config);
 
 
         $this->linkParser = $this->getMock('uebb\HateoasBundle\Service\LinkParserInterface');
         $this->linkResolver = $this->getMock('uebb\HateoasBundle\Service\LinkResolverInterface');
-        $this->formResolver = $this->getMock('uebb\HateoasBundle\Service\FormResolverInterface');
         $this->dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
+
+        $this->formResolver = new FormResolver($this->factory, $reader);
+
         $this->queryParser = $this->getMock('uebb\HateoasBundle\Service\QueryParserInterface');;
         $this->serializer = $this->getMock('JMS\Serializer\SerializerInterface');
         $this->validator = $this->getMock('Symfony\Component\Validator\Validator\ValidatorInterface');
@@ -187,7 +188,7 @@ class RequestProcessorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(array_multisort($this->expectedPatch), array_multisort($patch));
     }
 
-    public function testApplyPatch()
+    public function testPatchingAResource()
     {
         $this->init();
 
@@ -206,13 +207,67 @@ class RequestProcessorTest extends \PHPUnit_Framework_TestCase
         $john->setEmployer($peter);
 
         $patch = array(
-            array('op' => 'replace', 'path' => '/name', 'value' => 'John Doe')
+            array('op' => 'replace', 'path' => '/name', 'value' => 'John Doe'),
+            array('op' => 'replace', 'path' => '/birthday', 'value' => '1986-05-16'),
+            array('op' => 'remove', 'path' => '/_links/employer', 'value' => array('href' => 'http://localhost/persons/3'))
+        );
+
+
+        $this->linkResolver->expects($this->any())
+            ->method('resolveResourceLinks')
+            ->willReturnMap(array(
+                array(
+                    array('parents' => array('http://localhost/persons/2')),
+                    array('parents' => array($annette))
+                ),
+                array(
+                    array('employer' => array('http://localhost/persons/3')),
+                    array('employer' => array($peter))
+                ),
+                array(
+                    array(),
+                    array()
+                )
+            ));
+
+        $this->linkResolver->expects($this->any())
+            ->method('resolveResourceLink')
+            ->willReturnMap(array(
+                array('http://localhost/persons/1', $john),
+                array('http://localhost/persons/2', $annette),
+                array('http://localhost/persons/3', $peter)
+            ));
+
+        $this->requestProcessor->applyPatch('UebbHateoasBundle:TestPerson', $john, $patch);
+
+        $this->assertEquals('John Doe', $john->getName(), 'Failed to set a string property');
+        $this->assertDateTimeEquals(new \DateTime('1986-05-16'), $john->getBirthday(), 'Failed to set a date property');
+
+
+        $this->assertNull($john->getEmployer(), 'Failed to remove a resource from a singular link relation');
+
+        $patch = array(
+            array('op' => 'add', 'path' => '/_links/employer', 'value' => array('href' => 'http://localhost/persons/3'))
         );
 
         $this->requestProcessor->applyPatch('UebbHateoasBundle:TestPerson', $john, $patch);
 
-        print($john->getName());
+        $this->assertEquals($peter, $john->getEmployer(), 'Failed to add a resource to a singular link relation');
 
-        $this->assertEquals('John Doe', $john->getName());
+        $patch = array(
+            array('op' => 'remove', 'path' => '/_links/items', 'value' => array('href' => 'http://localhost/persons/2'))
+        );
+
+        $this->requestProcessor->patchResourceCollection('UebbHateoasBundle:TestPerson', $john, 'parents', $patch);
+
+        $this->assertTrue(!$john->getParents()->contains($annette), 'Failed to remove a resource from a collection');
+
+        $patch = array(
+            array('op' => 'add', 'path' => '/_links/items', 'value' => array('href' => 'http://localhost/persons/2'))
+        );
+
+        $this->requestProcessor->patchResourceCollection('UebbHateoasBundle:TestPerson', $john, 'parents', $patch);
+
+        $this->assertTrue($john->getParents()->contains($annette), 'Failed to add a resource to a collection');
     }
 }

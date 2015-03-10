@@ -55,8 +55,7 @@ class FormResolver implements FormResolverInterface
         }
 
         $options = array(
-            'data_class' => $resourceClassName,
-            'csrf_protection' => FALSE
+            'data_class' => $resourceClassName
         );
 
         $builder = $this->formFactory->createBuilder('form', $resource, $options);

@@ -376,7 +376,7 @@ class RequestProcessor
                             if ($collection->contains($resource)) {
                                 throw new ConflictHttpException("Resource cannot be linked twice");
                             } else {
-                                $this->dispatchActionEvent($entityName, 'link', $resource, $associationName, $value);
+                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                                 $collection->add($resource);
                             }
                         }
@@ -384,11 +384,12 @@ class RequestProcessor
                         if ($collection->contains($value)) {
                             throw new ConflictHttpException("Resource cannot be linked twice");
                         } else {
-                            $this->dispatchActionEvent($entityName, 'link', $resource, $associationName, $value);
+                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                             $collection->add($value);
                         }
                     }
                     $this->entityManager->persist($value);
+                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
                 }
                 //$accessor->setValue($resource, $associationName, $collection);
 
@@ -406,6 +407,7 @@ class RequestProcessor
      */
     protected function removeLinks($entityName, $resource, $links)
     {
+
         /** @var ClassMetadata $targetMetadata */
         $metadata = $this->getClassMetadata($entityName);
         if ($links === null) {
@@ -418,6 +420,8 @@ class RequestProcessor
             if (!array_key_exists($associationName, $links)) {
                 continue;
             }
+
+
 
             $relatedClass = $metadata->getAssociationTargetClass($associationName);
             $isInverse = $metadata->isAssociationInverseSide($associationName);
@@ -491,8 +495,8 @@ class RequestProcessor
             $path_parts = explode('/', $action['path']);
             array_shift($path_parts);
             if ($path_parts[0] === '_links' && $path_parts[1] === 'items') {
-
                 $values = $action['value'];
+
                 if (!is_array($values)) {
                     $values = array('href' => $values);
                 }
@@ -596,6 +600,7 @@ class RequestProcessor
         $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
 
         $form = $this->formResolver->getForm($resource);
+
         $form->submit($data, FALSE);
 
         foreach($data as $propertyName => $propertyValue) {

@@ -36,8 +36,8 @@
     }
   },
   "autoload-dev": {
-    "psr-0": {
-      "uebb\\HateoasBundle\\Test\\": "Test"
+    "psr-4": {
+      "uebb\\HateoasBundle\\Tests\\": "Tests"
     }
   }
 }

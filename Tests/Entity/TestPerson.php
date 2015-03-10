@@ -4,24 +4,32 @@ namespace uebb\HateoasBundle\Tests\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use uebb\HateoasBundle\Annotation as UebbHateoas;
-use JMS\Serializer as Serializer;
+use JMS\Serializer\Annotation as Serializer;
 use Hateoas\Configuration\Annotation as Hateoas;
 use uebb\HateoasBundle\Entity\Resource;
 
 /**
  * Class TestPerson
  * @ORM\Entity
- * @Serializer\ExclusionPolicy('all')
- * @Hateoas\RelationProvider('uebb.hateoas.relation_provider')
+ * @Hateoas\RelationProvider("uebb.hateoas.relation_provider")
  */
 class TestPerson extends Resource
 {
     /**
      * @var string
      * @ORM\Column(type="string")
-     * @Serializer\Annotation\Expose()
+     * @Serializer\Expose
+     * @UebbHateoas\FormField
      */
     protected $name;
+
+    /**
+     * @var \DateTime
+     * @ORM\Column(name="birthday", type="date", nullable=true)
+     * @Serializer\Expose
+     * @UebbHateoas\FormField(type="date", options={"widget"="single_text", "format"="yyyy-MM-dd"})
+     */
+    protected $birthday;
 
     /**
      * @var ArrayCollection
@@ -135,6 +143,24 @@ class TestPerson extends Resource
     {
         $this->employees = $employees;
     }
+
+    /**
+     * @return \DateTime
+     */
+    public function getBirthday()
+    {
+        return $this->birthday;
+    }
+
+    /**
+     * @param \DateTime $birthday
+     */
+    public function setBirthday($birthday)
+    {
+        $this->birthday = $birthday;
+    }
+
+
 
 
 }
