@@ -34,8 +34,12 @@ class GetLinkActionEventData extends ActionEventData
      * @param $linkRelation
      * @param ResourceInterface $linkResource
      */
-    public function __construct($entityName, ResourceInterface $resource, $linkRelation, ResourceInterface $linkResource = NULL)
-    {
+    public function __construct(
+        $entityName,
+        ResourceInterface $resource,
+        $linkRelation,
+        ResourceInterface $linkResource = null
+    ) {
         parent::__construct($entityName);
         $this->resource = $resource;
         $this->linkRelation = $linkRelation;
@@ -66,7 +70,5 @@ class GetLinkActionEventData extends ActionEventData
         return $this->linkResource;
     }
 
-
-    
 
 }

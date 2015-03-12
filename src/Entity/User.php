@@ -9,15 +9,12 @@
 namespace uebb\HateoasBundle\Entity;
 
 
-use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Mapping as ORM;
+use Hateoas\Configuration\Annotation as Hateoas;
+use JMS\Serializer\Annotation as Serializer;
 use Symfony\Component\Security\Core\Tests\Encoder\PasswordEncoder;
 use Symfony\Component\Security\Core\User\UserInterface;
-use uebb\HateoasBundle\Entity\Resource;
-use Doctrine\ORM\Mapping as ORM;
-use JMS\Serializer\Annotation as Serializer;
-use Hateoas\Configuration\Annotation as Hateoas;
 use Symfony\Component\Validator\Constraints as Assert;
-
 use uebb\HateoasBundle\Annotation as UebbHateoas;
 
 
@@ -196,6 +193,7 @@ class User extends Resource implements UserInterface
     {
         $this->plainPassword = '';
     }
+
     /**
      * @param array $roles
      */
@@ -211,7 +209,6 @@ class User extends Resource implements UserInterface
     {
         return $this->plainPassword;
     }
-
 
 
 }

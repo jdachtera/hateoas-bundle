@@ -12,10 +12,6 @@ namespace uebb\HateoasBundle\Test\Service;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\Driver\AnnotationDriver;
-use Symfony\Component\Form\Form;
-use Symfony\Component\Form\FormBuilder;
-use Symfony\Component\Form\FormFactory;
-use Symfony\Component\Form\FormRegistry;
 use Symfony\Component\Form\Test\TypeTestCase;
 use uebb\HateoasBundle\Service\FormResolver;
 use uebb\HateoasBundle\Service\RequestProcessor;
@@ -39,7 +35,7 @@ class RequestProcessorTest extends TypeTestCase
      * @var \PHPUnit_Framework_MockObject_MockObject
      */
     protected $linkResolver;
-     /**
+    /**
      * @var \PHPUnit_Framework_MockObject_MockObject
      */
     protected $formResolver;
@@ -67,9 +63,11 @@ class RequestProcessorTest extends TypeTestCase
         }
 
         $config = new \Doctrine\ORM\Configuration();
-        $config->setEntityNamespaces(array(
-            'UebbHateoasBundle' => 'uebb\\HateoasBundle\\Tests\\Entity'
-        ));
+        $config->setEntityNamespaces(
+            array(
+                'UebbHateoasBundle' => 'uebb\\HateoasBundle\\Tests\\Entity'
+            )
+        );
 
         $config->setAutoGenerateProxyClasses(true);
         $config->setProxyDir(\sys_get_temp_dir());
@@ -165,19 +163,27 @@ class RequestProcessorTest extends TypeTestCase
         array('op' => 'replace', 'path' => '/annualIncome', 'value' => 30000),
         array('op' => 'replace', 'path' => '/married', 'value' => false),
         array('op' => 'replace', 'path' => '/numberOfChildren', 'value' => 2),
-        array('op' => 'remove', 'path' => '/_links/wife', 'value' => array(
-            array(
-                'href' => 'http://example.com/people/annettedoe'
+        array(
+            'op' => 'remove',
+            'path' => '/_links/wife',
+            'value' => array(
+                array(
+                    'href' => 'http://example.com/people/annettedoe'
+                )
             )
-        )),
-        array('op' => 'add', 'path' => '/_links/child', 'value' => array(
-            array(
-                'href' => 'http://example.com/people/juliadoe'
-            ),
-            array(
-                'href' => 'http://example.com/people/maxdoe'
+        ),
+        array(
+            'op' => 'add',
+            'path' => '/_links/child',
+            'value' => array(
+                array(
+                    'href' => 'http://example.com/people/juliadoe'
+                ),
+                array(
+                    'href' => 'http://example.com/people/maxdoe'
+                )
             )
-        )),
+        ),
     );
 
     public function testGetPatch()
@@ -209,34 +215,42 @@ class RequestProcessorTest extends TypeTestCase
         $patch = array(
             array('op' => 'replace', 'path' => '/name', 'value' => 'John Doe'),
             array('op' => 'replace', 'path' => '/birthday', 'value' => '1986-05-16'),
-            array('op' => 'remove', 'path' => '/_links/employer', 'value' => array('href' => 'http://localhost/persons/3'))
+            array(
+                'op' => 'remove',
+                'path' => '/_links/employer',
+                'value' => array('href' => 'http://localhost/persons/3')
+            )
         );
 
 
         $this->linkResolver->expects($this->any())
-            ->method('resolveResourceLinks')
-            ->willReturnMap(array(
+            ->method('resolveLinks')
+            ->willReturnMap(
                 array(
-                    array('parents' => array('http://localhost/persons/2')),
-                    array('parents' => array($annette))
-                ),
-                array(
-                    array('employer' => array('http://localhost/persons/3')),
-                    array('employer' => array($peter))
-                ),
-                array(
-                    array(),
-                    array()
+                    array(
+                        array('parents' => array('http://localhost/persons/2')),
+                        array('parents' => array($annette))
+                    ),
+                    array(
+                        array('employer' => array('http://localhost/persons/3')),
+                        array('employer' => array($peter))
+                    ),
+                    array(
+                        array(),
+                        array()
+                    )
                 )
-            ));
+            );
 
         $this->linkResolver->expects($this->any())
-            ->method('resolveResourceLink')
-            ->willReturnMap(array(
-                array('http://localhost/persons/1', $john),
-                array('http://localhost/persons/2', $annette),
-                array('http://localhost/persons/3', $peter)
-            ));
+            ->method('resolveLink')
+            ->willReturnMap(
+                array(
+                    array('http://localhost/persons/1', $john),
+                    array('http://localhost/persons/2', $annette),
+                    array('http://localhost/persons/3', $peter)
+                )
+            );
 
         $this->requestProcessor->applyPatch('UebbHateoasBundle:TestPerson', $john, $patch);
 

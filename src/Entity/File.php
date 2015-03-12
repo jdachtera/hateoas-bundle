@@ -137,7 +137,7 @@ class File extends Resource
      */
     public function getFullPath($basePath)
     {
-        return $basePath . '/' . str_replace('\\', DIRECTORY_SEPARATOR, get_class($this)) . '/' . $this->getRealname();
+        return $basePath.'/'.str_replace('\\', DIRECTORY_SEPARATOR, get_class($this)).'/'.$this->getRealname();
     }
 
 

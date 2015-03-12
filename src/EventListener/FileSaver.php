@@ -8,7 +8,6 @@
 
 namespace uebb\HateoasBundle\EventListener;
 
-use Doctrine\Common\Util\Debug;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use uebb\HateoasBundle\Entity\File;
@@ -48,7 +47,7 @@ class FileSaver
                 $resource->setName($upload->getClientOriginalName());
             }
 
-            $realname = sha1(uniqid(mt_rand(), true)) . '.' . pathinfo($resource->getName(), PATHINFO_EXTENSION);
+            $realname = sha1(uniqid(mt_rand(), true)).'.'.pathinfo($resource->getName(), PATHINFO_EXTENSION);
 
             $resource->setMimeType($upload->getMimeType());
             $resource->setSize($upload->getMimeType());

@@ -35,8 +35,12 @@ class GetLinkCollectionActionEventData extends ActionEventData
      * @param $linkRelation
      * @param QueryBuilder $queryBuilder
      */
-    public function __construct($entityName, ResourceInterface $resource, $linkRelation, QueryBuilder $queryBuilder = NULL)
-    {
+    public function __construct(
+        $entityName,
+        ResourceInterface $resource,
+        $linkRelation,
+        QueryBuilder $queryBuilder = null
+    ) {
         parent::__construct($entityName);
         $this->resource = $resource;
         $this->linkRelation = $linkRelation;

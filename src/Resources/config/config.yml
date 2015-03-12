@@ -1,4 +1,5 @@
 parameters:
+    uebb.hateoas.cache.class: uebb\HateoasBundle\Service\Cache
     uebb.hateoas.relation_provider.class: uebb\HateoasBundle\Service\RelationProvider
     uebb.hateoas.link_parser.class: uebb\HateoasBundle\Service\LinkParser
     uebb.hateoas.link_resolver.class: uebb\HateoasBundle\Service\LinkResolver
@@ -10,17 +11,22 @@ parameters:
     uebb.hateoas.file_saver.class: uebb\HateoasBundle\EventListener\FileSaver
     uebb.hateoas.form_resolver.class: uebb\HateoasBundle\Service\FormResolver
     uebb.hateoas.image_resizer.class: uebb\HateoasBundle\Service\ImageResizer
+    uebb.hateoas.route_resolver.class: uebb\HateoasBundle\Service\RouteResolver
 
 services:
+
+    uebb.hateoas.cache:
+        class: %uebb.hateoas.cache.class%
+        arguments:
+            - @service_container
 
     uebb.hateoas.relation_provider:
         class: %uebb.hateoas.relation_provider.class%
         arguments:
             - @doctrine.orm.entity_manager
+            - @uebb.hateoas.route_resolver
             - @router
-            - @logger
-            - @service_container
-            - @security.token_storage
+            - @uebb.hateoas.cache
 
     uebb.hateoas.link_parser:
         class: %uebb.hateoas.link_parser.class%
@@ -32,6 +38,13 @@ services:
             - @router
             - @kernel
             - @event_dispatcher
+
+    uebb.hateoas.route_resolver:
+        class: %uebb.hateoas.route_resolver.class%
+        arguments:
+            - @router
+            - @uebb.hateoas.cache
+            - @doctrine.orm.entity_manager
 
     uebb.hateoas.request_processor:
         class: %uebb.hateoas.request_processor.class%

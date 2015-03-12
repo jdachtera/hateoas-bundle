@@ -8,7 +8,7 @@
 
 namespace uebb\HateoasBundle\Service;
 
-use Doctrine\Common\Inflector\Inflector;
+use Doctrine\Common\Util\Inflector;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
@@ -19,7 +19,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use uebb\HateoasBundle\Entity\ResourceInterface;
+use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use uebb\HateoasBundle\Entity\Root;
 use uebb\HateoasBundle\Entity\User;
 
@@ -37,40 +38,34 @@ class RelationProvider
      * @var EntityManager
      */
     protected $entityManager;
+    
+    /**
+     * @var Cache
+     */
+    protected $cache;
+
+    /**
+     * @var RouteResolver
+     */
+    protected $routeResolver;
 
     /**
      * @var RouterInterface
      */
     protected $router;
 
-    /**
-     * @var Logger
-     */
-    protected $logger;
-
-    /**
-     * @var TokenStorageInterface
-     */
-    protected $tokenStorage;
-
     protected static $IMAGE_ARGUMENTS = array('width', 'height', 'format');
-
-
     protected static $COLLECTION_ARGUMENTS = array('where', 'order', 'limit', 'page');
 
     /**
      * @param EntityManager $entityManager
      * @param RouterInterface $router
-     * @param Logger $logger
-     * @param ContainerInterface $container
      */
-    public function __construct(EntityManager $entityManager, RouterInterface $router, Logger $logger, ContainerInterface $container, TokenStorageInterface $tokenStorage)
-    {
+    public function __construct(EntityManager $entityManager, RouteResolver $routeResolver, RouterInterface $router, Cache $cache) {
         $this->entityManager = $entityManager;
+        $this->routeResolver = $routeResolver;
         $this->router = $router;
-        $this->logger = $logger;
-        $this->container = $container;
-        $this->tokenStorage = $tokenStorage;
+        $this->cache = $cache;
     }
 
     /**
@@ -83,69 +78,43 @@ class RelationProvider
      */
     public function addRelations($object, ClassMetadataInterface $classMetadata)
     {
-        /** @var \Doctrine\Common\Cache\CacheProvider $cache */
-        $cache = $this->container->get('doctrine_cache.providers.uebb_hateoas_relation_cache');
-
-        if ($cache->contains($classMetadata->getName())) {
-            return $cache->fetch($classMetadata->getName());
+        if ($this->cache->contains('relations', $classMetadata->getName())) {
+            return $this->cache->fetch('relations', $classMetadata->getName());
         }
 
         $relations = array();
 
         $classImplements = class_implements($classMetadata->getName());
-        
-        if (in_array('uebb\\HateoasBundle\\Entity\\RootInterface', $classImplements)) {
-            $relations = $this->addRootRelations($object, $classMetadata);
-        } else if (in_array('uebb\\HateoasBundle\\Entity\\ResourceInterface', $classImplements)) {
-            $selfRoute = $this->findRoute($classMetadata->getName(), 'getAction');
+
+        if (in_array('uebb\\HateoasBundle\\Entity\\ResourceInterface', $classImplements)) {
+            $selfRoute = $this->routeResolver->resolveRouteName($classMetadata->getName(), 'getAction');
 
             if ($selfRoute) {
                 $relations[] = new Hateoas\Relation(
                     'self',
-                    new Hateoas\Route(
-                        $selfRoute,
-                        array('id' => 'expr(object.getId())'),
-                        FALSE
-                    ),
+                    new Hateoas\Route($selfRoute, array('id' => 'expr(object.getId())'),false),
                     null,
                     array(),
-                    new Hateoas\Exclusion(
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        'expr(object.getId() === NULL)'
-                    )
+                    new Hateoas\Exclusion(null, null, null, null, 'expr(object.getId() === NULL)')
                 );
             }
             if (is_subclass_of($classMetadata->getName(), 'uebb\\HateoasBundle\\Entity\\File')) {
-                $downloadRoute = $this->findRoute($classMetadata->getName(), 'getDownloadAction');
+                $downloadRoute = $this->routeResolver->resolveRouteName($classMetadata->getName(), 'getDownloadAction');
 
                 $arguments = array('id' => 'expr(object.getId())');
 
-                if (in_array('uebb\\HateoasBundle\\Entity\\ImageInterface', class_implements($classMetadata->getName()))) {
-                    foreach(self::$IMAGE_ARGUMENTS as $argument) {
-                        $arguments[$argument] = '{' . $argument . '}';
+                if (in_array('uebb\\HateoasBundle\\Entity\\ImageInterface', $classImplements)) {
+                    foreach (self::$IMAGE_ARGUMENTS as $argument) {
+                        $arguments[$argument] = '{'.$argument.'}';
                     }
                 }
 
                 $relations[] = new Hateoas\Relation(
                     'download',
-                    new Hateoas\Route(
-                        $downloadRoute,
-                        $arguments,
-                        FALSE
-                    ),
+                    new Hateoas\Route($downloadRoute, $arguments, false),
                     null,
                     array(),
-                    new Hateoas\Exclusion(
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        'expr(object.getId() === NULL)'
-                    )
-                );
+                    new Hateoas\Exclusion(null, null, null, null, 'expr(object.getId() === NULL)'));
             }
 
             /** @var ClassMetadata $metadata */
@@ -156,139 +125,98 @@ class RelationProvider
             foreach ($metadata->getAssociationNames() as $associationName) {
                 $mapping = $metadata->getAssociationMapping($associationName);
 
-                $routeName = NULL;
+                $routeName = null;
 
                 if ($metadata->isSingleValuedAssociation($associationName)) {
-                    $routeName = $this->findRoute($mapping['targetEntity'], 'getAction');
-                    $args = array('id' => 'expr(object.get' . ucfirst($associationName) . '().getId())');
-                    $exclusion = new Hateoas\Exclusion(NULL, NULL, NULL, NULL, 'expr(null === object.get' . ucfirst($associationName) . '())');
+                    $routeName = $this->routeResolver->resolveRouteName($mapping['targetEntity'], 'getAction');
+                    $args = array('id' => 'expr(object.get'.ucfirst($associationName).'().getId())');
+                    $exclusion = new Hateoas\Exclusion(null, null, null, null, 'expr(null === object.get'.ucfirst($associationName).'())');
                 } else {
 
-                    $routeName = $this->findRoute($classMetadata->getName(), 'get' . ucfirst($associationName) . 'Action');
+                    $routeName = $this->routeResolver->resolveRouteName(
+                        $classMetadata->getName(),
+                        'get'.ucfirst($associationName).'Action'
+                    );
 
                     $args = array('id' => 'expr(object.getId())');
                     if (!$routeName) {
-                        $routeName = $this->findRoute($classMetadata->getName(), 'getLinkcollection', array('rel' => $associationName));
+                        $routeName = $this->routeResolver->resolveRouteName(
+                            $classMetadata->getName(),
+                            'getLinkcollection',
+                            array('rel' => $associationName)
+                        );
                         $args['rel'] = $associationName;
                     }
-                    $exclusion = NULL;
+                    $exclusion = null;
                 }
 
                 if ($routeName) {
                     if ($mapping['fetch'] === ClassMetadataInfo::FETCH_EAGER) {
-                        $embedded = 'expr(object.get' . ucfirst($associationName) . '())';
+                        $embedded = 'expr(object.get'.ucfirst($associationName).'())';
                     } else {
-                        $embedded = NULL;
+                        $embedded = null;
                     }
-                    $relations[] = new Hateoas\Relation($associationName, new Hateoas\Route($routeName, $args, FALSE), $embedded, array(), $exclusion);
+                    $relations[] = new Hateoas\Relation(
+                        $associationName,
+                        new Hateoas\Route($routeName, $args, false),
+                        $embedded,
+                        array(),
+                        $exclusion
+                    );
                 }
-            }
-            if (count($notExistingRoutes)) {
-                $this->logger->addWarning('There are possibly missing routes', $notExistingRoutes);
             }
         }
 
-        $cache->save($classMetadata->getName(), $relations);
+        $this->cache->save('relations', $classMetadata->getName(), $relations);
 
         return $relations;
 
     }
 
-    protected function addRootRelations(Root $object, ClassMetadataInterface $classMetadata)
-    {
-        $prefix = $object->getPrefix();
-        $prefixLength = strlen($prefix);
 
+    public function addRootRelations(Root $root, ClassMetadataInterface $classMetadata)
+    {
+        $prefix = $root->getPrefix();
         $relations = array();
 
-        $self_args = $this->router->match($object->getPrefix());
-        $relations[] = new Hateoas\Relation('self', new Hateoas\Route($self_args['_route'], array(), FALSE));
+        $self_args = $this->router->match($root->getPrefix());
 
-        foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $metadata) {
+        $relations[] = new Hateoas\Relation('self', new Hateoas\Route($self_args['_route'], array(), false));
+
+        foreach($root->getEntityNames() as $rel => $entityName) {
             /** @var ClassMetadata $metadata */
-            $metadata = $metadata;
+            $metadata = $this->entityManager->getMetadataFactory()->getMetadataFor($entityName);
 
-            if (
-                !$metadata->isMappedSuperclass && !$metadata->isEmbeddedClass &&
-                in_array('uebb\\HateoasBundle\\Entity\\ResourceInterface', class_implements($metadata->getName()))
-            ) {
-                $routeName = $this->findRoute($metadata->getName(), 'cgetAction');
-                if ($routeName) {
-                    $route = $this->router->getRouteCollection()->get($routeName);
-                    if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
-                        $arguments = array();
-                        foreach(self::$COLLECTION_ARGUMENTS as $argument) {
-                            $arguments[$argument] = '{' . $argument . '}';
-                        }
-                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, $arguments, FALSE));
-                    }
+            $routeName = $this->routeResolver->resolveRouteName($metadata->getName(), 'cgetAction');
+            if ($routeName) {
+                $arguments = array();
+                foreach (self::$COLLECTION_ARGUMENTS as $argument) {
+                    $arguments[$argument] = '{'.$argument.'}';
                 }
-                $routeName = $this->findRoute($metadata->getName(), 'getAction');
-                if ($routeName) {
-                    $route = $this->router->getRouteCollection()->get($routeName);
-                    if (substr($route->getPath(), 0, $prefixLength) === $prefix) {
-                        $relations[] = new Hateoas\Relation(substr($routeName, 4), new Hateoas\Route($routeName, array('id' => "{id}"), FALSE));
-                    }
-                }
+                $relations[] = new Hateoas\Relation(Inflector::pluralize($rel), new Hateoas\Route($routeName, $arguments, false));
+            }
+            $routeName = $this->routeResolver->resolveRouteName($metadata->getName(), 'getAction');
+            if ($routeName) {
+                $relations[] = new Hateoas\Relation($rel, new Hateoas\Route($routeName, array('id' => "{id}"), false));
+            }
+            $routeName = $self_args['_route'] . '_schema';
+            if ($this->router->getRouteCollection()->get($routeName)) {
+                $relations[] = new Hateoas\Relation('schema:' . $rel, new Hateoas\Route($routeName, array('rel' => $rel), false));
             }
         }
 
-        $user = $this->tokenStorage->getToken()->getUser();
-
+        $user = $root->getCurrentUser();
 
         if ($user instanceof User) {
+            $routeName = $this->routeResolver->resolveRouteName(get_class($user), 'getAction');
 
-            $routeName = $this->findRoute(get_class($user), 'getAction');
-            if($routeName) {
-                $relations[] = new Hateoas\Relation('currentUser', new Hateoas\Route($routeName, array(
-                    'id' => $user->getId()
-                ), FALSE));
+            if ($routeName) {
+
+                $relations[] = new Hateoas\Relation('currentUser', new Hateoas\Route($routeName, array('id' => $user->getId()), false));
             }
         }
 
         return $relations;
     }
 
-    /**
-     * Check if a route exists
-     *
-     * @param $name
-     * @return bool
-     */
-    protected function routeExists($name)
-    {
-        return $this->router->getRouteCollection()->get($name) instanceof Route;
-    }
-
-    /**
-     * @param String $resourceClass
-     * @param String $action
-     * @return mixed
-     * @throws \Doctrine\Common\Persistence\Mapping\MappingException
-     * @throws \Exception
-     */
-    protected function findRoute($resourceClass, $action, $args = array())
-    {
-
-        foreach($this->router->getRouteCollection()->all() as $name => /** @var Route $route */$route) {
-            $defaults = $route->getDefaults();
-
-            $parts = explode('::',$defaults['_controller']);
-
-            if (count($parts) === 2) {
-                $reflection = new \ReflectionClass($parts[0]);
-                $defaultProperties = $reflection->getdefaultProperties();
-                if (
-                    is_subclass_of($parts[0], '\\uebb\\HateoasBundle\\Controller\\HateoasController') &&
-                    $parts[1] === $action &&
-                    $this->entityManager->getMetadataFactory()->getMetadataFor($defaultProperties['entityName'])->getName() === $resourceClass
-                ) {
-                    if ($args === array_intersect_key($defaults, $args)) {
-                        return $name;
-                    }
-                }
-            }
-        }
-        return NULL;
-    }
 }

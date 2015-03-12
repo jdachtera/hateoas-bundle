@@ -10,16 +10,17 @@ namespace uebb\HateoasBundle\View;
 
 
 use Doctrine\ORM\QueryBuilder;
+use Hateoas\Configuration\Route;
 use Hateoas\Representation\CollectionRepresentation;
 use Pagerfanta\Adapter\AdapterInterface;
 use Pagerfanta\Adapter\DoctrineORMAdapter;
 use Pagerfanta\Pagerfanta;
 use Symfony\Component\HttpFoundation\Request;
-use Hateoas\Configuration\Route;
 use Symfony\Component\Routing\RouterInterface;
 use uebb\HateoasBundle\Representation\QueryablePaginatedRepresentation;
 
-class ResourceCollectionView extends View {
+class ResourceCollectionView extends View
+{
     /**
      * Get a view for a resource collection
      *
@@ -99,7 +100,7 @@ class ResourceCollectionView extends View {
 
         $pagerfanta->setCurrentPage($page);
 
-        $route = new Route($request->get('_route'), $request->attributes->get('_route_params'), FALSE);
+        $route = new Route($request->get('_route'), $request->attributes->get('_route_params'), false);
 
         return new QueryablePaginatedRepresentation(
             new CollectionRepresentation($pagerfanta->getCurrentPageResults()),
@@ -108,6 +109,7 @@ class ResourceCollectionView extends View {
             $pagerfanta->getCurrentPage(),
             $zeroLimit ? 0 : $pagerfanta->getMaxPerPage(),
             $nbPages,
+            $pagerfanta->count(),
             null,
             null,
             $route->isAbsolute(),

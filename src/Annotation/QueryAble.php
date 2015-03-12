@@ -15,5 +15,5 @@ namespace uebb\HateoasBundle\Annotation;
  */
 class QueryAble
 {
-    public $maxDepth = NULL;
+    public $maxDepth = null;
 }

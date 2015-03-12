@@ -1,5 +1,6 @@
 <?php
 namespace uebb\HateoasBundle\View;
+
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 
@@ -9,8 +10,8 @@ use Symfony\Component\Routing\RouterInterface;
  * Date: 06.02.15
  * Time: 08:04
  */
-
-class View extends \FOS\RestBundle\View\View {
+class View extends \FOS\RestBundle\View\View
+{
     /**
      * @var RouterInterface
      */

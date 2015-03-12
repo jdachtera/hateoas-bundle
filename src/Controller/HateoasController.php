@@ -8,7 +8,6 @@
 
 namespace uebb\HateoasBundle\Controller;
 
-use Doctrine\Common\Util\Debug;
 use Doctrine\ORM\QueryBuilder;
 use FOS\RestBundle\Controller\Annotations;
 use FOS\RestBundle\Controller\FOSRestController;
@@ -82,7 +81,7 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     protected function dispatchActionEvent(ActionEvent $event)
     {
         $this->get('event_dispatcher')->dispatch('uebb.hateoas.action', $event);
-        $this->get('event_dispatcher')->dispatch('uebb.hateoas.action_' .  $event->getId(), $event);
+        $this->get('event_dispatcher')->dispatch('uebb.hateoas.action_'.$event->getId(), $event);
     }
 
     /**
@@ -139,9 +138,12 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
 
             }
 
-            $displayName = pathinfo($resource->getName(), PATHINFO_BASENAME) . '.' . pathinfo($filename, PATHINFO_EXTENSION);
+            $displayName = pathinfo($resource->getName(), PATHINFO_BASENAME).'.'.pathinfo(
+                    $filename,
+                    PATHINFO_EXTENSION
+                );
 
-            return (new FileDownloadView($filename, $displayName, $request, FALSE))->getResponse();
+            return (new FileDownloadView($filename, $displayName, $request, false))->getResponse();
 
         } else {
             throw new MethodNotAllowedHttpException(array());
@@ -166,7 +168,12 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
     public function patchLinkCollection($id, $rel, Request $request)
     {
         $resource = $this->getRequestProcessor()->getResource($this->entityName, $id);
-        $this->getRequestProcessor()->patchResourceCollection($this->entityName, $resource, $rel, $request->request->all());
+        $this->getRequestProcessor()->patchResourceCollection(
+            $this->entityName,
+            $resource,
+            $rel,
+            $request->request->all()
+        );
         $validationErrors = $this->getValidator()->validate($resource);
 
         if ($validationErrors->count() > 0) {
@@ -175,7 +182,9 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
 
-            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PERSIST, new PatchActionEventData($this->entityName, $resource)));
+            $this->dispatchActionEvent(
+                new ActionEvent(ActionEvent::PERSIST, new PatchActionEventData($this->entityName, $resource))
+            );
 
             return new ResourcePatchView($this->get('router'), $resource);
         }
@@ -201,12 +210,18 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
 
-            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PERSIST, new PostActionEventData($this->entityName, $resource)));
+            $this->dispatchActionEvent(
+                new ActionEvent(ActionEvent::PERSIST, new PostActionEventData($this->entityName, $resource))
+            );
 
             $oldData = array_merge($data, array('_links' => $links));
             $newData = json_decode($this->get('serializer')->serialize($resource, 'json'), true);
 
-            return new ResourceCreationView($this->get('router'), $resource, $this->getRequestProcessor()->getPatch($oldData, $newData));
+            return new ResourceCreationView(
+                $this->get('router'),
+                $resource,
+                $this->getRequestProcessor()->getPatch($oldData, $newData)
+            );
         }
     }
 
@@ -225,7 +240,9 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
 
         $this->getDoctrine()->getManager()->flush();
 
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PERSIST, new RemoveActionEventData($this->entityName, $resource)));
+        $this->dispatchActionEvent(
+            new ActionEvent(ActionEvent::PERSIST, new RemoveActionEventData($this->entityName, $resource))
+        );
 
         return new ResourceDeleteView($this->get('router'));
     }
@@ -251,7 +268,10 @@ class HateoasController extends FOSRestController implements ClassResourceInterf
             $this->getDoctrine()->getManager()->persist($resource);
             $this->getDoctrine()->getManager()->flush();
 
-            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PERSIST, new PatchActionEventData($this->entityName, $resource)));
+            $this->dispatchActionEvent(
+                new ActionEvent(ActionEvent::PERSIST, new PatchActionEventData($this->entityName, $resource))
+            );
+
             return new ResourcePatchView($this->get('router'), $resource);
         }
     }

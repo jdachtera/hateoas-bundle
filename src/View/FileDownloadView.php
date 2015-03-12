@@ -9,8 +9,6 @@
 namespace uebb\HateoasBundle\View;
 
 
-use Doctrine\Common\Util\Debug;
-use Symfony\Bundle\FrameworkBundle\Routing\Router;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -30,7 +28,9 @@ class FileDownloadView extends \FOS\RestBundle\View\View
         $lastModified = new \DateTime();
         $lastModified->setTimestamp(filemtime($filename));
 
-        $ifModifiedSince = $request->headers->has('If-Modified-Since') ? new \DateTime($request->headers->get('If-Modified-Since')) : false;
+        $ifModifiedSince = $request->headers->has('If-Modified-Since') ? new \DateTime(
+            $request->headers->get('If-Modified-Since')
+        ) : false;
 
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $filename);

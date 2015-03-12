@@ -20,7 +20,7 @@ interface LinkResolverInterface
      * @param array $links
      * @return array
      */
-    public function resolveResourceLinks($links);
+    public function resolveLinks($links);
 
     /**
      *
@@ -28,5 +28,5 @@ interface LinkResolverInterface
      * @param $href - The resource link
      * @return ResourceInterface
      */
-    public function resolveResourceLink($href);
+    public function resolveLink($href);
 }

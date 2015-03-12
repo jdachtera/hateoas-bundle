@@ -19,9 +19,11 @@ abstract class ActionEventData
     /**
      * @param $entityName
      */
-    public function __construct($entityName) {
+    public function __construct($entityName)
+    {
         $this->entityName = $entityName;
     }
+
     /**
      * @return string
      */

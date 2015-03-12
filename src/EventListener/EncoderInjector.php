@@ -10,9 +10,9 @@ namespace uebb\HateoasBundle\EventListener;
 
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\Security\Core\Encoder\EncoderFactory;
+use uebb\HateoasBundle\Entity\User;
 use uebb\HateoasBundle\Event\ActionEvent;
 use uebb\HateoasBundle\Event\HateoasActionEvent;
-use uebb\HateoasBundle\Entity\User;
 
 
 class EncoderInjector

@@ -5,6 +5,6 @@ class InvalidLinkException extends \Symfony\Component\HttpKernel\Exception\HttpE
 {
     public function __construct($href)
     {
-        parent::__construct(400, 'The link \'' . $href . '\' could not be resolved to a local resource');
+        parent::__construct(400, 'The link \''.$href.'\' could not be resolved to a local resource');
     }
 }

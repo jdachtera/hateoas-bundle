@@ -4,7 +4,7 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "cd0abeb1f3b712aa53a81fbd4454268f",
+    "hash": "d81947b4150f7dae1a4d6fb5e3ec55a4",
     "packages": [
         {
             "name": "doctrine/annotations",
@@ -700,12 +700,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/doctrine2.git",
-                "reference": "34b7f07344f3e284f5013691a12d94bc9e0dbc59"
+                "reference": "cfc72365999d04be53c5648669858fbc62a11bd2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/doctrine2/zipball/34b7f07344f3e284f5013691a12d94bc9e0dbc59",
-                "reference": "34b7f07344f3e284f5013691a12d94bc9e0dbc59",
+                "url": "https://api.github.com/repos/doctrine/doctrine2/zipball/cfc72365999d04be53c5648669858fbc62a11bd2",
+                "reference": "cfc72365999d04be53c5648669858fbc62a11bd2",
                 "shasum": ""
             },
             "require": {
@@ -769,7 +769,7 @@
                 "database",
                 "orm"
             ],
-            "time": "2015-03-04 03:07:37"
+            "time": "2015-03-11 00:12:18"
         },
         {
             "name": "friendsofsymfony/rest-bundle",
@@ -906,22 +906,25 @@
         },
         {
             "name": "hautelook/templated-uri-router",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "target-dir": "Hautelook/TemplatedUriRouter",
             "source": {
                 "type": "git",
                 "url": "https://github.com/hautelook/TemplatedUriRouter.git",
-                "reference": "a455b924a71da5f3564a6502a55a0a409d3a19f3"
+                "reference": "597f76e5eb2fe798bae7cc3439e3de42f0dcbc2a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/hautelook/TemplatedUriRouter/zipball/a455b924a71da5f3564a6502a55a0a409d3a19f3",
-                "reference": "a455b924a71da5f3564a6502a55a0a409d3a19f3",
+                "url": "https://api.github.com/repos/hautelook/TemplatedUriRouter/zipball/597f76e5eb2fe798bae7cc3439e3de42f0dcbc2a",
+                "reference": "597f76e5eb2fe798bae7cc3439e3de42f0dcbc2a",
                 "shasum": ""
             },
             "require": {
                 "php": ">=5.3.0",
-                "symfony/routing": "~2.1"
+                "symfony/routing": ">=2.1,<2.5"
+            },
+            "conflict": {
+                "symfony/routing": "2.4.1"
             },
             "require-dev": {
                 "symfony/framework-bundle": "~2.1"
@@ -960,7 +963,7 @@
                 "url",
                 "xml"
             ],
-            "time": "2013-12-05 17:55:28"
+            "time": "2014-01-07 15:02:15"
         },
         {
             "name": "jdorn/sql-formatter",
@@ -1240,6 +1243,72 @@
             "time": "2013-12-05 14:36:11"
         },
         {
+            "name": "justinrainbow/json-schema",
+            "version": "1.3.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/justinrainbow/json-schema.git",
+                "reference": "87b54b460febed69726c781ab67462084e97a105"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/justinrainbow/json-schema/zipball/87b54b460febed69726c781ab67462084e97a105",
+                "reference": "87b54b460febed69726c781ab67462084e97a105",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "json-schema/json-schema-test-suite": "1.1.0",
+                "phpdocumentor/phpdocumentor": "~2",
+                "phpunit/phpunit": "~3.7"
+            },
+            "bin": [
+                "bin/validate-json"
+            ],
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.4.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-0": {
+                    "JsonSchema": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "Bruno Prieto Reis",
+                    "email": "bruno.p.reis@gmail.com"
+                },
+                {
+                    "name": "Justin Rainbow",
+                    "email": "justin.rainbow@gmail.com"
+                },
+                {
+                    "name": "Igor Wiedler",
+                    "email": "igor@wiedler.ch"
+                },
+                {
+                    "name": "Robert Schönthal",
+                    "email": "seroscho@googlemail.com"
+                }
+            ],
+            "description": "A library to validate a json schema.",
+            "homepage": "https://github.com/justinrainbow/json-schema",
+            "keywords": [
+                "json",
+                "schema"
+            ],
+            "time": "2014-08-25 02:48:14"
+        },
+        {
             "name": "knplabs/doctrine-behaviors",
             "version": "v1.0.3",
             "source": {
@@ -1300,6 +1369,51 @@
                 "tree"
             ],
             "time": "2015-02-06 12:50:23"
+        },
+        {
+            "name": "knplabs/json-schema-bundle",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/KnpLabs/KnpJsonSchemaBundle.git",
+                "reference": "eec9be8279ad3226fbca64a26c985528eb310527"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/KnpLabs/KnpJsonSchemaBundle/zipball/eec9be8279ad3226fbca64a26c985528eb310527",
+                "reference": "eec9be8279ad3226fbca64a26c985528eb310527",
+                "shasum": ""
+            },
+            "require": {
+                "doctrine/common": "~2.3",
+                "justinrainbow/json-schema": ">=1.2.2",
+                "php": ">=5.3",
+                "symfony/finder": "~2.3",
+                "symfony/form": "~2.3",
+                "symfony/framework-bundle": "~2.3",
+                "symfony/validator": "~2.3"
+            },
+            "require-dev": {
+                "phpspec/phpspec": "~2.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-0": {
+                    "Knp\\JsonSchemaBundle": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "KnpLabs",
+                    "homepage": "http://knplabs.com"
+                }
+            ],
+            "description": "A bundle to generate json schema based on various metadata",
+            "time": "2015-02-06 12:51:40"
         },
         {
             "name": "nelmio/cors-bundle",
@@ -2007,6 +2121,53 @@
             "time": "2015-01-03 21:13:09"
         },
         {
+            "name": "symfony/finder",
+            "version": "v2.6.4",
+            "target-dir": "Symfony/Component/Finder",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/Finder.git",
+                "reference": "16513333bca64186c01609961a2bb1b95b5e1355"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/Finder/zipball/16513333bca64186c01609961a2bb1b95b5e1355",
+                "reference": "16513333bca64186c01609961a2bb1b95b5e1355",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.3"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.6-dev"
+                }
+            },
+            "autoload": {
+                "psr-0": {
+                    "Symfony\\Component\\Finder\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Symfony Community",
+                    "homepage": "http://symfony.com/contributors"
+                },
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                }
+            ],
+            "description": "Symfony Finder Component",
+            "homepage": "http://symfony.com",
+            "time": "2015-01-03 08:01:59"
+        },
+        {
             "name": "symfony/form",
             "version": "v2.6.4",
             "target-dir": "Symfony/Component/Form",
@@ -2471,17 +2632,17 @@
         },
         {
             "name": "symfony/routing",
-            "version": "v2.6.4",
+            "version": "v2.4.10",
             "target-dir": "Symfony/Component/Routing",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/Routing.git",
-                "reference": "bda1c3c67f2a33bbeabb1d321feaf626a0ca5698"
+                "reference": "0bd97a27cfd1ad2699ad045de2a744888318a228"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/Routing/zipball/bda1c3c67f2a33bbeabb1d321feaf626a0ca5698",
-                "reference": "bda1c3c67f2a33bbeabb1d321feaf626a0ca5698",
+                "url": "https://api.github.com/repos/symfony/Routing/zipball/0bd97a27cfd1ad2699ad045de2a744888318a228",
+                "reference": "0bd97a27cfd1ad2699ad045de2a744888318a228",
                 "shasum": ""
             },
             "require": {
@@ -2489,12 +2650,11 @@
             },
             "require-dev": {
                 "doctrine/annotations": "~1.0",
-                "doctrine/common": "~2.2",
                 "psr/log": "~1.0",
                 "symfony/config": "~2.2",
                 "symfony/expression-language": "~2.4",
                 "symfony/http-foundation": "~2.3",
-                "symfony/yaml": "~2.0,>=2.0.5"
+                "symfony/yaml": "~2.0"
             },
             "suggest": {
                 "doctrine/annotations": "For using the annotation loader",
@@ -2505,7 +2665,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "2.6-dev"
+                    "dev-master": "2.4-dev"
                 }
             },
             "autoload": {
@@ -2535,7 +2695,7 @@
                 "uri",
                 "url"
             ],
-            "time": "2015-01-15 12:15:12"
+            "time": "2014-09-22 15:28:09"
         },
         {
             "name": "symfony/security",
@@ -4003,7 +4163,8 @@
     "minimum-stability": "stable",
     "stability-flags": {
         "doctrine/common": 20,
-        "doctrine/orm": 20
+        "doctrine/orm": 20,
+        "knplabs/json-schema-bundle": 20
     },
     "prefer-stable": false,
     "prefer-lowest": false,

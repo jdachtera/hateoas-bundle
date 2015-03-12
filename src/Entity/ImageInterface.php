@@ -3,6 +3,7 @@
 namespace uebb\HateoasBundle\Entity;
 
 
-interface ImageInterface {
+interface ImageInterface
+{
 
 }

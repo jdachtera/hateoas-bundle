@@ -80,8 +80,16 @@ class RequestProcessor
     protected $validator;
 
 
-    public function __construct(EntityManagerInterface $entityManager, LinkParserInterface $linkParser, LinkResolverInterface $linkResolver, FormResolverInterface $formResolver, EventDispatcherInterface $dispatcher, QueryParserInterface $queryParser, SerializerInterface $serializer, Validator\ValidatorInterface $validator)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LinkParserInterface $linkParser,
+        LinkResolverInterface $linkResolver,
+        FormResolverInterface $formResolver,
+        EventDispatcherInterface $dispatcher,
+        QueryParserInterface $queryParser,
+        SerializerInterface $serializer,
+        Validator\ValidatorInterface $validator
+    ) {
         $this->entityManager = $entityManager;
         $this->linkParser = $linkParser;
         $this->linkResolver = $linkResolver;
@@ -98,7 +106,7 @@ class RequestProcessor
     protected function dispatchActionEvent(ActionEvent $event)
     {
         $this->dispatcher->dispatch('uebb.hateoas.action', $event);
-        $this->dispatcher->dispatch('uebb.hateoas.action_' .  $event->getId(), $event);
+        $this->dispatcher->dispatch('uebb.hateoas.action_'.$event->getId(), $event);
     }
 
     /**
@@ -150,7 +158,10 @@ class RequestProcessor
     {
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new GetCollectionActionEventData($entityName)));
         $queryBuilder = $this->getBaseQueryBuilder($entityName, $request);
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetCollectionActionEventData($entityName, $queryBuilder)));
+        $this->dispatchActionEvent(
+            new ActionEvent(ActionEvent::POST, new GetCollectionActionEventData($entityName, $queryBuilder))
+        );
+
         return $queryBuilder;
     }
 
@@ -190,13 +201,15 @@ class RequestProcessor
 
         $result = $queryBuilder->getQuery()->getResult();
 
-        $resource = count($result) ? $result[0] : NULL;
+        $resource = count($result) ? $result[0] : null;
 
         if (!$resource instanceof $resourceClassName) {
-            throw new NotFoundHttpException('Resource ' . $entityName . ':' . $id . ' not found');
+            throw new NotFoundHttpException('Resource '.$entityName.':'.$id.' not found');
         }
 
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetActionEventData($entityName, $id, $resource)));
+        $this->dispatchActionEvent(
+            new ActionEvent(ActionEvent::POST, new GetActionEventData($entityName, $id, $resource))
+        );
 
         return $resource;
     }
@@ -215,6 +228,7 @@ class RequestProcessor
         $queryBuilder->orderBy($queryBuilder->expr()->desc('e.updated'));
         $queryBuilder->setMaxResults(1);
         $result = $queryBuilder->getQuery()->getScalarResult();
+
         return count($result) === 1 ? new \DateTime($result[0]['updated']) : false;
 
     }
@@ -230,7 +244,9 @@ class RequestProcessor
      */
     public function getRelatedResources($entityName, Request $request, $resource, $rel)
     {
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new GetLinkCollectionActionEventData($entityName, $resource, $rel)));
+        $this->dispatchActionEvent(
+            new ActionEvent(ActionEvent::PRE, new GetLinkCollectionActionEventData($entityName, $resource, $rel))
+        );
 
         /** @var ClassMetadata $metadata */
         $mapping = $this->getClassMetadata($entityName)->getAssociationMapping($rel);
@@ -241,12 +257,17 @@ class RequestProcessor
         /** @var \Doctrine\ORM\QueryBuilder $queryBuilder */
         $queryBuilder = $this->getBaseQueryBuilder($mapping['targetEntity'], $request);
 
-        $queryBuilder->innerJoin('e.' . $relatedMapping['fieldName'], $relatedMapping['fieldName']);
-        $queryBuilder->andWhere($relatedMapping['fieldName'] . '.id = :parent_id');
+        $queryBuilder->innerJoin('e.'.$relatedMapping['fieldName'], $relatedMapping['fieldName']);
+        $queryBuilder->andWhere($relatedMapping['fieldName'].'.id = :parent_id');
 
         $queryBuilder->setParameter('parent_id', $resource->getId());
 
-        $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new GetLinkCollectionActionEventData($entityName, $resource, $rel, $queryBuilder)));
+        $this->dispatchActionEvent(
+            new ActionEvent(
+                ActionEvent::POST,
+                new GetLinkCollectionActionEventData($entityName, $resource, $rel, $queryBuilder)
+            )
+        );
 
         return $queryBuilder;
     }
@@ -266,13 +287,13 @@ class RequestProcessor
 
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PostActionEventData($entityName, $resource)));
 
-        $links = $this->linkResolver->resolveResourceLinks($links);
+        $links = $this->linkResolver->resolveLinks($links);
 
         $this->addLinks($entityName, $resource, $links);
 
         $form = $this->formResolver->getForm($resource);
 
-        $form->submit($data, FALSE);
+        $form->submit($data, false);
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new PostActionEventData($entityName, $resource)));
 
         return $resource;
@@ -329,7 +350,7 @@ class RequestProcessor
 
 
                 if (count($links[$associationName]) > 1) {
-                    throw new ConflictHttpException('Resource can only have one ' . $associationName . ' relation');
+                    throw new ConflictHttpException('Resource can only have one '.$associationName.' relation');
                 }
                 $value = count($links[$associationName]) ? $links[$associationName][0] : null;
 
@@ -337,7 +358,12 @@ class RequestProcessor
                 if (!($value instanceof $relatedClass)) {
                     throw new NotAcceptableHttpException("Wrong resource type or resource not found.");
                 } else {
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::PRE,
+                            new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
 
                     if ($isInverse) {
                         if ($targetMetadata->isSingleValuedAssociation($targetField)) {
@@ -347,16 +373,31 @@ class RequestProcessor
                             if ($collection->contains($resource)) {
                                 throw new ConflictHttpException("Resource cannot be linked twice");
                             } else {
-                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                                $this->dispatchActionEvent(
+                                    new ActionEvent(
+                                        ActionEvent::PRE,
+                                        new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                                    )
+                                );
                                 $collection->add($resource);
                             }
                         }
                     } else {
-                        $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                        $this->dispatchActionEvent(
+                            new ActionEvent(
+                                ActionEvent::PRE,
+                                new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                            )
+                        );
                         $accessor->setValue($resource, $associationName, $value);
                     }
                     $this->entityManager->persist($value);
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::POST,
+                            new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
                 }
             } else {
 
@@ -365,7 +406,9 @@ class RequestProcessor
 
                 forEach ($links[$associationName] as $value) {
                     if (!($value instanceof $relatedClass)) {
-                        throw new UnsupportedMediaTypeHttpException("Wrong resource type or resource not found: " . get_class($value));
+                        throw new UnsupportedMediaTypeHttpException(
+                            "Wrong resource type or resource not found: ".get_class($value)
+                        );
                     }
 
                     if ($isInverse) {
@@ -376,7 +419,12 @@ class RequestProcessor
                             if ($collection->contains($resource)) {
                                 throw new ConflictHttpException("Resource cannot be linked twice");
                             } else {
-                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                                $this->dispatchActionEvent(
+                                    new ActionEvent(
+                                        ActionEvent::PRE,
+                                        new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                                    )
+                                );
                                 $collection->add($resource);
                             }
                         }
@@ -384,12 +432,22 @@ class RequestProcessor
                         if ($collection->contains($value)) {
                             throw new ConflictHttpException("Resource cannot be linked twice");
                         } else {
-                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                            $this->dispatchActionEvent(
+                                new ActionEvent(
+                                    ActionEvent::PRE,
+                                    new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                                )
+                            );
                             $collection->add($value);
                         }
                     }
                     $this->entityManager->persist($value);
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new AddLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::POST,
+                            new AddLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
                 }
                 //$accessor->setValue($resource, $associationName, $collection);
 
@@ -422,7 +480,6 @@ class RequestProcessor
             }
 
 
-
             $relatedClass = $metadata->getAssociationTargetClass($associationName);
             $isInverse = $metadata->isAssociationInverseSide($associationName);
             if ($isInverse) {
@@ -433,17 +490,32 @@ class RequestProcessor
 
             if ($metadata->isSingleValuedAssociation($associationName)) {
                 if (count($links[$associationName]) > 1) {
-                    throw new ConflictHttpException('Cannot remove more than one resource from singular ' . $associationName . ' relation');
+                    throw new ConflictHttpException(
+                        'Cannot remove more than one resource from singular '.$associationName.' relation'
+                    );
                 }
                 $value = count($links[$associationName]) ? $links[$associationName][0] : null;
                 $originalValue = $accessor->getValue($resource, $associationName);
                 if ($originalValue === $value) {
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::PRE,
+                            new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
                     $accessor->setValue($resource, $associationName, null);
                     $this->entityManager->persist($value);
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::POST,
+                            new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
                 } else {
-                    throw new PreconditionFailedHttpException("Resource " . $this->entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
+                    throw new PreconditionFailedHttpException(
+                        "Resource ".$this->entityName.":".($resource->getId() ? $resource->getId(
+                        ) : "new")." is not linked to ".$relatedClass.":".$value->getId()
+                    );
                 }
 
             } else {
@@ -451,32 +523,60 @@ class RequestProcessor
 
                 forEach ($links[$associationName] as $value) {
                     if (!($value instanceof $relatedClass)) {
-                        throw new UnsupportedMediaTypeHttpException("Wrong resource type or resource not found: " . get_class($value));
+                        throw new UnsupportedMediaTypeHttpException(
+                            "Wrong resource type or resource not found: ".get_class($value)
+                        );
                     }
 
                     if ($isInverse) {
                         if ($targetMetadata->isSingleValuedAssociation($targetField)) {
-                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
-                            $accessor->setValue($value, $targetField, NULL);
+                            $this->dispatchActionEvent(
+                                new ActionEvent(
+                                    ActionEvent::PRE,
+                                    new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                                )
+                            );
+                            $accessor->setValue($value, $targetField, null);
                         } else {
                             $collection = $accessor->getValue($value, $targetField);
                             if ($collection->contains($resource)) {
-                                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
+                                $this->dispatchActionEvent(
+                                    new ActionEvent(
+                                        ActionEvent::PRE,
+                                        new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                                    )
+                                );
                                 $collection->removeElement($resource);
                             } else {
-                                throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
+                                throw new PreconditionFailedHttpException(
+                                    "Resource ".$entityName.":".($resource->getId() ? $resource->getId(
+                                    ) : "new")." is not linked to ".$relatedClass.":".$value->getId()
+                                );
                             }
                         }
                     } else {
                         if ($collection->contains($value)) {
-                            $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
+                            $this->dispatchActionEvent(
+                                new ActionEvent(
+                                    ActionEvent::PRE,
+                                    new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                                )
+                            );
                             $collection->removeElement($value);
                         } else {
-                            throw new PreconditionFailedHttpException("Resource " . $entityName . ":" . ($resource->getId() ? $resource->getId() : "new") . " is not linked to " . $relatedClass . ":" . $value->getId());
+                            throw new PreconditionFailedHttpException(
+                                "Resource ".$entityName.":".($resource->getId() ? $resource->getId(
+                                ) : "new")." is not linked to ".$relatedClass.":".$value->getId()
+                            );
                         }
                     }
                     $this->entityManager->persist($value);
-                    $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)));
+                    $this->dispatchActionEvent(
+                        new ActionEvent(
+                            ActionEvent::POST,
+                            new RemoveLinkActionEventData($entityName, $resource, $associationName, $value)
+                        )
+                    );
                 }
             }
 
@@ -514,18 +614,22 @@ class RequestProcessor
                     foreach ($values as $value) {
                         $linksToAdd[$rel][] = $value['href'];
                     }
-                } else if ($action['op'] === 'remove') {
-                    foreach ($values as $value) {
-                        $linksToRemove[$rel][] = $value['href'];
-                    }
                 } else {
-                    throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
+                    if ($action['op'] === 'remove') {
+                        foreach ($values as $value) {
+                            $linksToRemove[$rel][] = $value['href'];
+                        }
+                    } else {
+                        throw new \InvalidArgumentException(
+                            'Operation '.$action['op'].' is not implemented for relation '.$path_parts[1]
+                        );
+                    }
                 }
             }
         }
 
-        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToRemove));
-        $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
+        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveLinks($linksToRemove));
+        $this->addLinks($entityName, $resource, $this->linkResolver->resolveLinks($linksToAdd));
     }
 
     public function applyPatch($entityName, $resource, array $patch)
@@ -551,15 +655,22 @@ class RequestProcessor
             array_shift($path_parts);
             if ($path_parts[0] === '_links') {
 
-                if (!$metadata->hasAssociation($path_parts[1]) || !$metadata->isSingleValuedAssociation($path_parts[1])) {
-                    throw new BadRequestHttpException('Resource has no singular relation named ' . $path_parts[1]);
+                if (!$metadata->hasAssociation($path_parts[1]) || !$metadata->isSingleValuedAssociation(
+                        $path_parts[1]
+                    )
+                ) {
+                    throw new BadRequestHttpException('Resource has no singular relation named '.$path_parts[1]);
                 }
                 if ($action['op'] === 'replace' || $action['op'] === 'add') {
                     $linksToAdd[$path_parts[1]][] = $action['value']['href'];
-                } else if ($action['op'] === 'remove') {
-                    $linksToRemove[$path_parts[1]][] = $action['value']['href'];
                 } else {
-                    throw new \InvalidArgumentException('Operation ' . $action['op'] . ' is not implemented for relation ' . $path_parts[1]);
+                    if ($action['op'] === 'remove') {
+                        $linksToRemove[$path_parts[1]][] = $action['value']['href'];
+                    } else {
+                        throw new \InvalidArgumentException(
+                            'Operation '.$action['op'].' is not implemented for relation '.$path_parts[1]
+                        );
+                    }
                 }
             } else {
                 if (count($path_parts) > 1) {
@@ -567,44 +678,62 @@ class RequestProcessor
                 }
                 switch ($action['op']) {
                     case 'add':
-                        if ($accessor->getValue($resource, $path_parts[0]) === NULL) {
+                        if ($accessor->getValue($resource, $path_parts[0]) === null) {
                             // If the property is not present, simply add it.
                             $data[$path_parts[0]] = $action['value'];
                         } else {
-                            $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) + intval($action['value']));
+                            $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) + intval(
+                                    $action['value']
+                                ));
                         }
                         break;
                     case 'remove':
-                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) - intval($action['value']));
+                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) - intval(
+                                $action['value']
+                            ));
                         break;
                     case 'multiply':
-                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) * intval($action['value']));
+                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) * intval(
+                                $action['value']
+                            ));
                         break;
                     case 'divide':
-                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) / intval($action['value']));
+                        $data[$path_parts[0]] = (intval($accessor->getValue($resource, $path_parts[0])) / intval(
+                                $action['value']
+                            ));
                         break;
                     case 'replace':
                         $data[$path_parts[0]] = $action['value'];
                         break;
                     default:
-                        throw new NotImplementedException('Operation ' . $action['op'] . ' is not implemented');
+                        throw new NotImplementedException('Operation '.$action['op'].' is not implemented');
                         break;
                 }
 
-                $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchPropertyActionEventData($entityName, $resource, $path_parts[0], $action['value'])));
+                $this->dispatchActionEvent(
+                    new ActionEvent(
+                        ActionEvent::PRE,
+                        new PatchPropertyActionEventData($entityName, $resource, $path_parts[0], $action['value'])
+                    )
+                );
             }
         }
 
 
-        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToRemove));
-        $this->addLinks($entityName, $resource, $this->linkResolver->resolveResourceLinks($linksToAdd));
+        $this->removeLinks($entityName, $resource, $this->linkResolver->resolveLinks($linksToRemove));
+        $this->addLinks($entityName, $resource, $this->linkResolver->resolveLinks($linksToAdd));
 
         $form = $this->formResolver->getForm($resource);
 
-        $form->submit($data, FALSE);
+        $form->submit($data, false);
 
-        foreach($data as $propertyName => $propertyValue) {
-            $this->dispatchActionEvent(new ActionEvent(ActionEvent::POST, new PatchPropertyActionEventData($entityName, $resource, $propertyName, $propertyValue)));
+        foreach ($data as $propertyName => $propertyValue) {
+            $this->dispatchActionEvent(
+                new ActionEvent(
+                    ActionEvent::POST,
+                    new PatchPropertyActionEventData($entityName, $resource, $propertyName, $propertyValue)
+                )
+            );
         }
 
         $this->dispatchActionEvent(new ActionEvent(ActionEvent::PRE, new PatchActionEventData($entityName, $resource)));
@@ -613,7 +742,7 @@ class RequestProcessor
     public function getPatch(array $oldData, array $newData)
     {
         $linksProperty = '_links';
-        
+
         $oldLinks = $oldData[$linksProperty];
         $newLinks = $newData[$linksProperty];
 
@@ -632,10 +761,9 @@ class RequestProcessor
         $newData = array_merge($newData, array_fill_keys(array_diff($properties, array_keys($newData)), null));
 
 
-
-        foreach($properties as $property) {
+        foreach ($properties as $property) {
             if (json_encode($oldData[$property]) !== json_encode($newData[$property])) {
-                $patch[] = array('op' => 'replace', 'path' => '/' . $property, 'value' => $newData[$property]);
+                $patch[] = array('op' => 'replace', 'path' => '/'.$property, 'value' => $newData[$property]);
             }
         }
 
@@ -644,7 +772,7 @@ class RequestProcessor
         $oldLinks = array_merge($oldLinks, array_fill_keys(array_diff($rels, array_keys($oldLinks)), null));
         $newLinks = array_merge($newLinks, array_fill_keys(array_diff($rels, array_keys($newLinks)), null));
 
-        foreach($rels as $rel) {
+        foreach ($rels as $rel) {
             $currentOldLinks = array();
             $currentNewLinks = array();
 
@@ -673,10 +801,10 @@ class RequestProcessor
             }
 
             $removed = array();
-            foreach($currentOldLinks as $oldLink) {
+            foreach ($currentOldLinks as $oldLink) {
 
                 $isInNew = false;
-                foreach($currentNewLinks as $newLink) {
+                foreach ($currentNewLinks as $newLink) {
                     if ($oldLink['href'] === $newLink['href']) {
                         $isInNew = true;
                     }
@@ -687,13 +815,13 @@ class RequestProcessor
             }
 
             if (count($removed)) {
-                $patch[] = array('op' => 'remove', 'path' => '/' . $linksProperty . '/' . $rel, 'value' => $removed);
+                $patch[] = array('op' => 'remove', 'path' => '/'.$linksProperty.'/'.$rel, 'value' => $removed);
             }
 
             $added = array();
-            foreach($currentNewLinks as $newLink) {
+            foreach ($currentNewLinks as $newLink) {
                 $isInOld = false;
-                foreach($currentOldLinks as $oldLink) {
+                foreach ($currentOldLinks as $oldLink) {
                     if ($newLink['href'] === $oldLink['href']) {
                         $isInOld = true;
                     }
@@ -704,7 +832,7 @@ class RequestProcessor
             }
 
             if (count($added)) {
-                $patch[] = array('op' => 'add', 'path' => '/' . $linksProperty . '/' . $rel, 'value' => $added);
+                $patch[] = array('op' => 'add', 'path' => '/'.$linksProperty.'/'.$rel, 'value' => $added);
             }
         }
 

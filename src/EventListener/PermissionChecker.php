@@ -53,7 +53,7 @@ class PermissionChecker
         }
 
         if (false === $this->authorizationChecker->isGranted(array('RESOURCE_VOTE'), $event)) {
-            throw new AccessDeniedHttpException(sprintf('Action %s is not allowed.', $event->getAction()), NULL, 403);
+            throw new AccessDeniedHttpException(sprintf('Action %s is not allowed.', $event->getAction()), null, 403);
         }
 
     }

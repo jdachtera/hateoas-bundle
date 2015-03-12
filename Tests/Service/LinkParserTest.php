@@ -12,14 +12,16 @@ namespace uebb\HateoasBundle\Test\Service;
 use Symfony\Component\HttpFoundation\Request;
 use uebb\HateoasBundle\Service\LinkParser;
 
-class LinkParserTest extends \PHPUnit_Framework_TestCase {
+class LinkParserTest extends \PHPUnit_Framework_TestCase
+{
 
     /**
      * @var LinkParser
      */
     private $linkParser;
 
-    public function __construct() {
+    public function __construct()
+    {
         $this->linkParser = new LinkParser();
     }
 
@@ -39,7 +41,7 @@ class LinkParserTest extends \PHPUnit_Framework_TestCase {
         $request = new Request();
         $request->headers->set('Link', $header);
 
-        $this->assertEquals($expected, $this->linkParser->parseLinks($request));
+        $this->assertEquals($expected, $this->linkParser->parseRequestLinks($request));
     }
 
     public function testParseBodyLinks()
@@ -63,7 +65,7 @@ class LinkParserTest extends \PHPUnit_Framework_TestCase {
         $request = new Request();
         $request->request->set('_links', $_links);
 
-        $this->assertEquals($expected, $this->linkParser->parseLinks($request));
+        $this->assertEquals($expected, $this->linkParser->parseRequestLinks($request));
     }
 
     public function testInvalidInputData()
@@ -75,11 +77,11 @@ class LinkParserTest extends \PHPUnit_Framework_TestCase {
         $request = new Request();
         $request->request->set('_links', $_invalid);
 
-        $this->assertEquals(array(), $this->linkParser->parseLinks($request));
+        $this->assertEquals(array(), $this->linkParser->parseRequestLinks($request));
     }
 
     public function testEmptyInput()
     {
-        $this->assertEquals(array(), $this->linkParser->parseLinks(new Request()));
+        $this->assertEquals(array(), $this->linkParser->parseRequestLinks(new Request()));
     }
 }

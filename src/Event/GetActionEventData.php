@@ -28,7 +28,7 @@ class GetActionEventData extends ActionEventData
      * @param $id
      * @param ResourceInterface $resource
      */
-    public function __construct($entityName, $id, ResourceInterface $resource = NULL)
+    public function __construct($entityName, $id, ResourceInterface $resource = null)
     {
         parent::__construct($entityName);
         $this->id = $id;

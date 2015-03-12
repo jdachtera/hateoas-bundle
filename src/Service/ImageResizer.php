@@ -27,8 +27,8 @@ class ImageResizer
     {
         $this->container = $container;
 
-        foreach(array('png', 'jpeg', 'webp', 'gif') as $format) {
-            if (function_exists('image' . $format)) {
+        foreach (array('png', 'jpeg', 'webp', 'gif') as $format) {
+            if (function_exists('image'.$format)) {
                 $this->formats[] = $format;
             }
         }
@@ -47,7 +47,7 @@ class ImageResizer
 
         try {
             list($sourceWidth, $sourceHeight, $type) = getimagesize($filename);
-        } catch(\Exception $e) {
+        } catch (\Exception $e) {
             throw new NotFoundHttpException('', $e);
         }
 
@@ -65,13 +65,19 @@ class ImageResizer
         if ($sourceWidth <= $targetWidth && $sourceHeight <= $targetHeight) {
             $targetWidth = $sourceWidth;
             $targetHeight = $sourceHeight;
-        } else if ($targetRatio > $sourceRatio) {
-            $targetWidth = (int)($targetHeight * $sourceRatio);
-        } else if ($targetRatio < $sourceRatio) {
-            $targetHeight = (int)($targetWidth / $sourceRatio);
+        } else {
+            if ($targetRatio > $sourceRatio) {
+                $targetWidth = (int)($targetHeight * $sourceRatio);
+            } else {
+                if ($targetRatio < $sourceRatio) {
+                    $targetHeight = (int)($targetWidth / $sourceRatio);
+                }
+            }
         }
 
-        $cache_filename = $file->getFullPath($this->container->getParameter('uebb.hateoas.cache_dir')) . '-' . strval($targetWidth) . 'x' . strval($targetHeight) . '.' . $targetFormat;
+        $cache_filename = $file->getFullPath($this->container->getParameter('uebb.hateoas.cache_dir')).'-'.strval(
+                $targetWidth
+            ).'x'.strval($targetHeight).'.'.$targetFormat;
 
 
         if (!is_file($cache_filename)) {
@@ -91,14 +97,25 @@ class ImageResizer
             }
 
             $targetImage = imagecreatetruecolor($targetWidth, $targetHeight);
-            imagecopyresampled($targetImage, $sourceImage, 0, 0, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
+            imagecopyresampled(
+                $targetImage,
+                $sourceImage,
+                0,
+                0,
+                0,
+                0,
+                $targetWidth,
+                $targetHeight,
+                $sourceWidth,
+                $sourceHeight
+            );
 
             $dir = dirname($cache_filename);
             if (!is_dir($dir)) {
-                mkdir($dir, 0770, TRUE);
+                mkdir($dir, 0770, true);
             }
 
-            switch($targetFormat) {
+            switch ($targetFormat) {
                 case 'png':
                     imagepng($targetImage, $cache_filename, 9, PNG_ALL_FILTERS);
                     break;

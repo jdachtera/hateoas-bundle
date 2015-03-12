@@ -10,7 +10,6 @@ namespace uebb\HateoasBundle\Event;
 
 
 use Doctrine\ORM\QueryBuilder;
-use uebb\HateoasBundle\Entity\ResourceInterface;
 
 class GetCollectionActionEventData extends ActionEventData
 {
@@ -23,7 +22,7 @@ class GetCollectionActionEventData extends ActionEventData
      * @param $entityName
      * @param QueryBuilder $queryBuilder
      */
-    public function __construct($entityName, QueryBuilder $queryBuilder = NULL)
+    public function __construct($entityName, QueryBuilder $queryBuilder = null)
     {
         parent::__construct($entityName);
         $this->queryBuilder = $queryBuilder;

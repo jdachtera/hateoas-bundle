@@ -10,7 +10,6 @@ namespace uebb\HateoasBundle\Event;
 
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\EventDispatcher\Event;
-use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Class EntityVoteData
@@ -22,15 +21,13 @@ use Symfony\Component\HttpFoundation\Request;
 class ActionEvent extends Event
 {
 
+    const PRE = 'pre';
+    const POST = 'post';
+    const PERSIST = 'persist';
     /**
      * @var
      */
     protected $stage;
-
-    const PRE = 'pre';
-    const POST = 'post';
-    const PERSIST = 'persist';
-
     /**
      * @var string
      */
@@ -49,7 +46,9 @@ class ActionEvent extends Event
     {
         $this->stage = $stage;
         $this->data = $data;
-        $this->action = Container::underscore(substr(join('', array_slice(explode('\\', get_class($data)), -1)), 0, -15));
+        $this->action = Container::underscore(
+            substr(join('', array_slice(explode('\\', get_class($data)), -1)), 0, -15)
+        );
     }
 
     /**
@@ -81,9 +80,8 @@ class ActionEvent extends Event
      */
     public function getId()
     {
-        return $this->stage . '_' . $this->action;
+        return $this->stage.'_'.$this->action;
     }
 
 
-
-} 
+}

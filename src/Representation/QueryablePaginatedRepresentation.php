@@ -57,6 +57,12 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
      * @var string
      */
     private $orderParameterName;
+    /**
+     * @var int
+     * @Serializer\Expose
+     * @Serializer\XmlAttribute
+     */
+    private $count;
 
     public function __construct(
         $inline,
@@ -65,6 +71,7 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
         $page,
         $limit,
         $pages,
+        $count,
         $pageParameterName = null,
         $limitParameterName = null,
         $absolute = false,
@@ -74,9 +81,24 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
         $whereParameterName = null,
         $searchParameterName = null,
         $orderParameterName = null
-    )
-    {
-        parent::__construct($inline, $route, $parameters, $page, $limit, $pages, $pageParameterName, $limitParameterName, $absolute);
+    ) {
+
+
+
+        parent::__construct(
+            $inline,
+            $route,
+            $parameters,
+            $page,
+            $limit,
+            $pages,
+            $pageParameterName,
+            $limitParameterName,
+            $absolute
+        );
+
+        $this->count = $count;
+
         $this->where = $where;
         $this->whereParameterName = $whereParameterName ?: 'where';
 
@@ -99,6 +121,7 @@ class QueryablePaginatedRepresentation extends PaginatedRepresentation
         $parameters[$this->whereParameterName] = null == $where ? $this->getWhere() : $where;
         $parameters[$this->searchParameterName] = null == $search ? $this->getSearch() : $search;
         $parameters[$this->orderParameterName] = null == $order ? $this->getOrder() : $order;
+
         return $parameters;
     }
 

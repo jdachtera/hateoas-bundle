@@ -1,5 +1,6 @@
 <?php
 namespace uebb\HateoasBundle\Routing;
+
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Symfony\Component\Routing\Route;
 
@@ -9,8 +10,8 @@ use Symfony\Component\Routing\Route;
  * Date: 04.02.15
  * Time: 14:57
  */
-
-class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader {
+class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader
+{
 
 
     /**
@@ -20,10 +21,11 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
     {
         return is_string($resource)
         && 'hateoas' === $type
-        && !in_array(pathinfo($resource, PATHINFO_EXTENSION), array('xml', 'yml')
+        && !in_array(
+            pathinfo($resource, PATHINFO_EXTENSION),
+            array('xml', 'yml')
         );
     }
-
 
 
     /**
@@ -49,13 +51,18 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
 
             foreach ($metadata->getAssociationNames() as $associationName) {
                 if ($metadata->isCollectionValuedAssociation($associationName)) {
-                    foreach(array('get', 'patch') as $method) {
-                        if (!$reflection->hasMethod($method . ucfirst($associationName) . 'Action')) {
-                            $resource  = preg_split(
-                                '/([A-Z][^A-Z]*)Controller/', $reflection->getShortName(), -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE
+                    foreach (array('get', 'patch') as $method) {
+                        if (!$reflection->hasMethod($method.ucfirst($associationName).'Action')) {
+                            $resource = preg_split(
+                                '/([A-Z][^A-Z]*)Controller/',
+                                $reflection->getShortName(),
+                                -1,
+                                PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE
                             );
-                            
-                            $routeName =  $method . '_' . strtolower(implode('_', $resource)) . '_'. strtolower($associationName);
+
+                            $routeName = $method.'_'.strtolower(implode('_', $resource)).'_'.strtolower(
+                                    $associationName
+                                );
 
                             $urlParts = array();
 
@@ -64,13 +71,16 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
                             $urlParts[] = '{id}';
                             $urlParts[] = strtolower($associationName);
 
-                            $pattern      = implode('/', $urlParts);
-                            $defaults     = array('_controller' => $prefix . $method . 'Linkcollection', 'rel' => $associationName);
+                            $pattern = implode('/', $urlParts);
+                            $defaults = array(
+                                '_controller' => $prefix.$method.'Linkcollection',
+                                'rel' => $associationName
+                            );
                             $requirements = array('_method' => strtoupper($method));
-                            $options      = array();
-                            $host         = '';
-                            $schemes      = array();
-                            $condition    = null;
+                            $options = array();
+                            $host = '';
+                            $schemes = array();
+                            $condition = null;
 
 
                             $route = new Route(
@@ -100,7 +110,7 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
      */
     private function getControllerLocator($controller)
     {
-        $class  = null;
+        $class = null;
         $prefix = null;
 
         if (0 === strpos($controller, '@')) {
@@ -123,14 +133,14 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
             $this->container->leaveScope('request');
         } elseif (class_exists($controller)) {
             // full class name
-            $class  = $controller;
+            $class = $controller;
             $prefix = $class.'::';
         } elseif (false !== strpos($controller, ':')) {
             // bundle:controller notation
             try {
-                $notation             = $this->controllerParser->parse($controller.':method');
-                list($class, ) = explode('::', $notation);
-                $prefix               = $class.'::';
+                $notation = $this->controllerParser->parse($controller.':method');
+                list($class,) = explode('::', $notation);
+                $prefix = $class.'::';
             } catch (\Exception $e) {
                 throw new \InvalidArgumentException(
                     sprintf('Can\'t locate "%s" controller.', $controller)
@@ -139,9 +149,12 @@ class HateoasRouteLoader extends \FOS\RestBundle\Routing\Loader\RestRouteLoader 
         }
 
         if (empty($class)) {
-            throw new \InvalidArgumentException(sprintf(
-                'Class could not be determined for Controller identified by "%s".', $controller
-            ));
+            throw new \InvalidArgumentException(
+                sprintf(
+                    'Class could not be determined for Controller identified by "%s".',
+                    $controller
+                )
+            );
         }
 
         return array($prefix, $class);

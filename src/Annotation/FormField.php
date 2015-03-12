@@ -15,6 +15,6 @@ namespace uebb\HateoasBundle\Annotation;
  */
 class FormField
 {
-    public $type = NULL;
+    public $type = null;
     public $options = array();
 }

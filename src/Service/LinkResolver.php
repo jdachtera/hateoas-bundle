@@ -13,7 +13,6 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Controller\ControllerResolverInterface;
 use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
@@ -48,8 +47,7 @@ class LinkResolver implements LinkResolverInterface
         UrlMatcherInterface $urlMatcher,
         HttpKernelInterface $kernel,
         EventDispatcherInterface $dispatcher
-    )
-    {
+    ) {
         $this->resolver = $controllerResolver;
         $this->urlMatcher = $urlMatcher;
         $this->kernel = $kernel;
@@ -65,13 +63,13 @@ class LinkResolver implements LinkResolverInterface
      * @param array $links
      * @return array
      */
-    public function resolveResourceLinks($links)
+    public function resolveLinks($links)
     {
         $linkTable = array();
 
         foreach ($links as $rel => $resources) {
             foreach ($resources as $resource) {
-                $linkTable[$rel][] = $this->resolveResourceLink($resource['href']);
+                $linkTable[$rel][] = $this->resolveLink($resource['href']);
             }
         }
 
@@ -84,7 +82,7 @@ class LinkResolver implements LinkResolverInterface
      * @param $href - The resource link
      * @return ResourceInterface
      */
-    public function resolveResourceLink($href)
+    public function resolveLink($href)
     {
         $stubRequest = Request::create($href);
         // External url
@@ -108,7 +106,7 @@ class LinkResolver implements LinkResolverInterface
 
         try {
             $route = $this->urlMatcher->match($path);
-        } catch(ResourceNotFoundException $e) {
+        } catch (ResourceNotFoundException $e) {
             throw new InvalidLinkException($href);
         }
 
@@ -124,7 +122,12 @@ class LinkResolver implements LinkResolverInterface
         }
 
         // Make sure @ParamConverter and friends are handled
-        $subEvent = new FilterControllerEvent($this->kernel, $controller, $stubRequest, HttpKernelInterface::MASTER_REQUEST);
+        $subEvent = new FilterControllerEvent(
+            $this->kernel,
+            $controller,
+            $stubRequest,
+            HttpKernelInterface::MASTER_REQUEST
+        );
         $this->dispatcher->dispatch(KernelEvents::CONTROLLER, $subEvent);
         $controller = $subEvent->getController();
 
@@ -135,6 +138,7 @@ class LinkResolver implements LinkResolverInterface
         if ($result instanceof View) {
             $result = $result->getData();
         }
+
         return $result;
     }
 

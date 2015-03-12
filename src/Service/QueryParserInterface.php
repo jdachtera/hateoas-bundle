@@ -2,21 +2,8 @@
 
 namespace uebb\HateoasBundle\Service;
 
-use Doctrine\Common\Annotations\AnnotationReader;
-use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Collections\Criteria;
-use Doctrine\Common\Collections\Expr\Comparison;
-use Doctrine\Common\Collections\Expr\CompositeExpression;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
-use Doctrine\ORM\EntityManager;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Query\Expr\OrderBy;
-use Doctrine\ORM\Query\Expr\Orx;
 use Doctrine\ORM\QueryBuilder;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 interface QueryParserInterface
 {
@@ -28,7 +15,13 @@ interface QueryParserInterface
      */
     public function applyWhere($entityName, QueryBuilder $queryBuilder, $where, $maxDepth);
 
-    public function deepJoinProperties($entityName, QueryBuilder $queryBuilder, $propertyParts, $joinedAliases = array(), $maxDepth = TRUE);
+    public function deepJoinProperties(
+        $entityName,
+        QueryBuilder $queryBuilder,
+        $propertyParts,
+        $joinedAliases = array(),
+        $maxDepth = true
+    );
 
     /**
      * @param $entityName
@@ -45,5 +38,5 @@ interface QueryParserInterface
      * @param bool $maxDepth
      * @return QueryBuilder
      */
-    public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = TRUE);
+    public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = true);
 }

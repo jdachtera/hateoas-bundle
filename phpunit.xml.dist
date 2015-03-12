@@ -10,8 +10,8 @@
          syntaxCheck="false"
          bootstrap="./Tests/bootstrap.php"
 
->
-         
+        >
+
     <testsuites>
         <testsuite name="Uebb Hateoas Bundle Test Suite">
             <directory>./Tests</directory>
@@ -23,7 +23,7 @@
             <directory suffix=".php">./src</directory>
         </whitelist>
     </filter>
-    
+
     <groups>
         <exclude>
             <group>performance</group>

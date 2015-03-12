@@ -3,9 +3,9 @@ namespace uebb\HateoasBundle\Tests\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
-use uebb\HateoasBundle\Annotation as UebbHateoas;
-use JMS\Serializer\Annotation as Serializer;
 use Hateoas\Configuration\Annotation as Hateoas;
+use JMS\Serializer\Annotation as Serializer;
+use uebb\HateoasBundle\Annotation as UebbHateoas;
 use uebb\HateoasBundle\Entity\Resource;
 
 /**
@@ -159,8 +159,6 @@ class TestPerson extends Resource
     {
         $this->birthday = $birthday;
     }
-
-
 
 
 }

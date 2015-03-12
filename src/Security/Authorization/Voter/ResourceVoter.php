@@ -14,8 +14,6 @@ use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 use Symfony\Component\Security\Core\Exception\InvalidArgumentException;
 use Symfony\Component\Security\Core\Role\RoleHierarchyInterface;
-use Symfony\Component\Security\Core\User\User;
-use Symfony\Component\Security\Core\User\UserInterface;
 use uebb\HateoasBundle\Event\ActionEvent;
 use uebb\HateoasBundle\Event\AddLinkActionEventData;
 use uebb\HateoasBundle\Event\GetActionEventData;
@@ -56,10 +54,11 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
     {
         foreach ($this->supportedClasses as $supportedClass) {
             if ($supportedClass === $class || is_subclass_of($class, $supportedClass)) {
-                return TRUE;
+                return true;
             }
         }
-        return FALSE;
+
+        return false;
     }
 
     /**
@@ -93,7 +92,10 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
             return VoterInterface::ACCESS_ABSTAIN;
         }
 
-        if (count($attributes) !== 1 || $attributes[0] !== 'RESOURCE_VOTE' || !$this->supportsClass($event->getData()->getEntityName())) {
+        if (count($attributes) !== 1 || $attributes[0] !== 'RESOURCE_VOTE' || !$this->supportsClass(
+                $event->getData()->getEntityName()
+            )
+        ) {
             return VoterInterface::ACCESS_ABSTAIN;
         }
 
@@ -151,21 +153,27 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
      * @param GetActionEventData $data
      * @return int
      */
-    protected function get(TokenInterface $token, GetActionEventData $data) {}
+    protected function get(TokenInterface $token, GetActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param GetCollectionActionEventData $data
      * @return int
      */
-    protected function getCollection(TokenInterface $token, GetCollectionActionEventData $data) {}
+    protected function getCollection(TokenInterface $token, GetCollectionActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param GetLinkCollectionActionEventData $data
      * @return int
      */
-    protected function getLinkCollection(TokenInterface $token, GetLinkCollectionActionEventData $data) {}
+    protected function getLinkCollection(TokenInterface $token, GetLinkCollectionActionEventData $data)
+    {
+    }
 
 
     /**
@@ -173,35 +181,45 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
      * @param PostActionEventData $data
      * @return int
      */
-    protected function post(TokenInterface $token, PostActionEventData $data) {}
+    protected function post(TokenInterface $token, PostActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param PatchActionEventData $data
      * @return int
      */
-    protected function patch(TokenInterface $token, PatchActionEventData $data) {}
+    protected function patch(TokenInterface $token, PatchActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param PatchPropertyActionEventData $data
      * @return int
      */
-    protected function patchProperty(TokenInterface $token, PatchPropertyActionEventData $data) {}
+    protected function patchProperty(TokenInterface $token, PatchPropertyActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param RemoveActionEventData $data
      * @return int
      */
-    protected function remove(TokenInterface $token, RemoveActionEventData $data) {}
+    protected function remove(TokenInterface $token, RemoveActionEventData $data)
+    {
+    }
 
     /**
      * @param TokenInterface $token
      * @param AddLinkActionEventData $data
      * @return int
      */
-    protected function addLink(TokenInterface $token, AddLinkActionEventData $data) {}
+    protected function addLink(TokenInterface $token, AddLinkActionEventData $data)
+    {
+    }
 
 
     /**
@@ -209,7 +227,9 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
      * @param RemoveLinkActionEventData $data
      * @return int
      */
-    protected function removeLink(TokenInterface $token, RemoveLinkActionEventData $data) {}
+    protected function removeLink(TokenInterface $token, RemoveLinkActionEventData $data)
+    {
+    }
 
     /**
      * @param bool $grant
@@ -217,7 +237,7 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
      */
     protected function grantOrDeny($grant)
     {
-        if ($grant === TRUE) {
+        if ($grant === true) {
             return VoterInterface::ACCESS_GRANTED;
         } else {
             return VoterInterface::ACCESS_DENIED;
@@ -233,9 +253,10 @@ abstract class ResourceVoter implements VoterInterface, ContainerAwareInterface
     {
         foreach ($this->roleHierarchy->getReachableRoles($token->getRoles()) as $role) {
             if ($roleName === $role->getRole()) {
-                return TRUE;
+                return true;
             }
         }
-        return FALSE;
+
+        return false;
     }
 }

@@ -1,5 +1,6 @@
 <?php
 namespace uebb\HateoasBundle\View;
+
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
@@ -10,8 +11,8 @@ use Symfony\Component\Validator\ConstraintViolationListInterface;
  * Date: 06.02.15
  * Time: 08:05
  */
-
-class ValidationErrorView extends View{
+class ValidationErrorView extends View
+{
     /**
      * @param RouterInterface $router
      * @param ConstraintViolationListInterface $validationErrors
@@ -37,11 +38,13 @@ class ValidationErrorView extends View{
 
         }
 
-        $this->setData(array(
-            'code' => 400,
-            'message' => 'Validation Failed',
-            'errors' => $errors
-        ));
+        $this->setData(
+            array(
+                'code' => 400,
+                'message' => 'Validation Failed',
+                'errors' => $errors
+            )
+        );
 
         $this->setStatusCode(400);
     }

@@ -2,11 +2,7 @@
 
 namespace uebb\HateoasBundle\Service;
 
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Collections\Criteria;
-use Doctrine\Common\Collections\Expr\Comparison;
-use Doctrine\Common\Collections\Expr\CompositeExpression;
 use Doctrine\Common\Persistence\Mapping\ClassMetadata;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -37,8 +33,11 @@ class QueryParser implements QueryParserInterface
      */
     protected $annotationReader;
 
-    public function __construct(ContainerInterface $container, EntityManagerInterface $entityManager, Reader $annotationReader)
-    {
+    public function __construct(
+        ContainerInterface $container,
+        EntityManagerInterface $entityManager,
+        Reader $annotationReader
+    ) {
 
         $this->container = $container;
         $this->entityManager = $entityManager;
@@ -52,8 +51,11 @@ class QueryParser implements QueryParserInterface
 
     protected function getPropertyAnnotation($entityName, $propertyName, $annotation)
     {
-        $reflectionClass = new \ReflectionClass($this->entityManager->getMetadataFactory()->getMetadataFor($entityName)->getName());
+        $reflectionClass = new \ReflectionClass(
+            $this->entityManager->getMetadataFactory()->getMetadataFor($entityName)->getName()
+        );
         $propertyReflection = $reflectionClass->getProperty($propertyName);
+
         return $this->annotationReader->getPropertyAnnotation($propertyReflection, $annotation);
     }
 
@@ -80,16 +82,27 @@ class QueryParser implements QueryParserInterface
         foreach ($constraints as $constraint) {
             $propertyParts = explode('.', $constraint['property']);
 
-            $joinedAliases = $this->deepJoinProperties($entityName, $queryBuilder, $propertyParts, $joinedAliases, $maxDepth);
+            $joinedAliases = $this->deepJoinProperties(
+                $entityName,
+                $queryBuilder,
+                $propertyParts,
+                $joinedAliases,
+                $maxDepth
+            );
 
             if (count($propertyParts) === 1) {
-                $field = $rootAliases[0] . '.' . $propertyParts[0];
-            }  else {
-                $field = implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1];
+                $field = $rootAliases[0].'.'.$propertyParts[0];
+            } else {
+                $field = implode(
+                        '_',
+                        array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))
+                    ).'.'.$propertyParts[count($propertyParts) - 1];
             }
 
-            if ($constraint['value'] === NULL) {
-                $expression = $constraint['comparator'] === '=' ? $queryBuilder->expr()->isNull($field) : $queryBuilder->expr()->isNotNull($field);
+            if ($constraint['value'] === null) {
+                $expression = $constraint['comparator'] === '=' ? $queryBuilder->expr()->isNull(
+                    $field
+                ) : $queryBuilder->expr()->isNotNull($field);
             } else {
                 $expression = new \Doctrine\ORM\Query\Expr\Comparison(
                     $field,
@@ -98,7 +111,6 @@ class QueryParser implements QueryParserInterface
                 );
 
             }
-
 
 
             if (strtoupper($constraint['connector']) === 'OR') {
@@ -114,40 +126,66 @@ class QueryParser implements QueryParserInterface
     }
 
 
-    public function deepJoinProperties($entityName, QueryBuilder $queryBuilder, $propertyParts, $joinedAliases = array(), $maxDepth = TRUE)
-    {
+    public function deepJoinProperties(
+        $entityName,
+        QueryBuilder $queryBuilder,
+        $propertyParts,
+        $joinedAliases = array(),
+        $maxDepth = true
+    ) {
         $metadata = $this->getClassMetadata($entityName);
         $rootAliases = $queryBuilder->getRootAliases();
 
         for ($i = 0; $i < count($propertyParts); $i++) {
 
             /** @var \uebb\HateoasBundle\Annotation\QueryAble $propertyAnnotation */
-            $propertyAnnotation = $this->getPropertyAnnotation($metadata->getName(), $propertyParts[$i], 'uebb\HateoasBundle\Annotation\QueryAble');
+            $propertyAnnotation = $this->getPropertyAnnotation(
+                $metadata->getName(),
+                $propertyParts[$i],
+                'uebb\HateoasBundle\Annotation\QueryAble'
+            );
 
             if (!$propertyAnnotation) {
-                throw new AccessDeniedHttpException('You are not allowed to query the property ' . $propertyParts[$i] . ' of the entity type ' . $metadata->getName(), NULL, 403);
+                throw new AccessDeniedHttpException(
+                    'You are not allowed to query the property '.$propertyParts[$i].' of the entity type '.$metadata->getName(
+                    ), null, 403
+                );
             }
 
-            if ($propertyAnnotation->maxDepth !== NULL) {
+            if ($propertyAnnotation->maxDepth !== null) {
                 $maxDepth = $i + $propertyAnnotation->maxDepth;
             }
 
-            if ($maxDepth !== TRUE && intval($maxDepth) < $i) {
-                throw new AccessDeniedHttpException('You are not allowed to query deeper than ' . $maxDepth . ' properties', NULL, 403);
+            if ($maxDepth !== true && intval($maxDepth) < $i) {
+                throw new AccessDeniedHttpException(
+                    'You are not allowed to query deeper than '.$maxDepth.' properties',
+                    null,
+                    403
+                );
             }
 
 
-            if ($i < count($propertyParts) -1) {
+            if ($i < count($propertyParts) - 1) {
                 $metadata = $this->getClassMetadata($metadata->getAssociationTargetClass($propertyParts[$i]));
-            } else if ($i === count($propertyParts) -1 && !$metadata->hasField($propertyParts[$i]) && !$metadata->isSingleValuedAssociation($propertyParts[$i])) {
-                throw new BadRequestHttpException($propertyParts[$i] . ' is not a scalar field of entity type ' . $metadata->getName(), NULL, 400);
+            } else {
+                if ($i === count($propertyParts) - 1 && !$metadata->hasField(
+                        $propertyParts[$i]
+                    ) && !$metadata->isSingleValuedAssociation($propertyParts[$i])
+                ) {
+                    throw new BadRequestHttpException(
+                        $propertyParts[$i].' is not a scalar field of entity type '.$metadata->getName(), null, 400
+                    );
+                }
             }
 
             if ($i > 0) {
                 $alias = implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, $i)));
                 if (!in_array($alias, $joinedAliases)) {
                     $queryBuilder->leftJoin(
-                        implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, $i - 1))) . '.' . $propertyParts[$i -1],
+                        implode(
+                            '_',
+                            array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, $i - 1))
+                        ).'.'.$propertyParts[$i - 1],
                         $alias
                     );
 
@@ -175,14 +213,14 @@ class QueryParser implements QueryParserInterface
 
         $rootAliases = $queryBuilder->getRootAliases();
 
-        if ($search !== NULL && trim($search) !== '') {
+        if ($search !== null && trim($search) !== '') {
             $expressions = array();
             foreach ($metadata->getFieldNames() as $field) {
                 if (in_array($field, $this->getQueryAbleProperties($entityName))) {
 
                     $expressions[] = $queryBuilder->expr()->like(
-                        $rootAliases[0] . '.' . $field,
-                        $this->entityManager->getConnection()->quote('%' . $search . '%')
+                        $rootAliases[0].'.'.$field,
+                        $this->entityManager->getConnection()->quote('%'.$search.'%')
                     );
                 }
             }
@@ -210,7 +248,7 @@ class QueryParser implements QueryParserInterface
         /**
          * Parse order string: name ASC, age DESC
          */
-        if ($order !== NULL && trim($order) !== '') {
+        if ($order !== null && trim($order) !== '') {
             $orders = array();
             $orderStrings = explode(',', $order);
 
@@ -223,13 +261,21 @@ class QueryParser implements QueryParserInterface
 
                 $joinedAliases = $this->deepJoinProperties($entityName, $queryBuilder, $propertyParts, $joinedAliases);
 
-                if ($direction !==  'ASC' && $direction !== 'DESC') {
+                if ($direction !== 'ASC' && $direction !== 'DESC') {
                     $direction = 'ASC';
                 }
-                $queryBuilder->addOrderBy(new OrderBy(
-                    (count($propertyParts) === 1 ? ($rootAliases[0] . '.') : '') . implode('_', array_merge(array($rootAliases[0]), array_slice($propertyParts, 0, count($propertyParts) - 1))) . '.' . $propertyParts[count($propertyParts) -1],
-                    $direction
-                ));
+                $queryBuilder->addOrderBy(
+                    new OrderBy(
+                        (count($propertyParts) === 1 ? ($rootAliases[0].'.') : '').implode(
+                            '_',
+                            array_merge(
+                                array($rootAliases[0]),
+                                array_slice($propertyParts, 0, count($propertyParts) - 1)
+                            )
+                        ).'.'.$propertyParts[count($propertyParts) - 1],
+                        $direction
+                    )
+                );
             }
         }
     }
@@ -241,7 +287,7 @@ class QueryParser implements QueryParserInterface
      * @param bool $maxDepth
      * @return QueryBuilder
      */
-    public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = TRUE)
+    public function applyQueryParameters($entityName, Request $request, QueryBuilder $queryBuilder, $maxDepth = true)
     {
         $joinedAliases = $this->applyWhere($entityName, $queryBuilder, $request->query->get('where'), $maxDepth);
         $this->applySearch($entityName, $queryBuilder, $request->query->get('search'));
@@ -274,12 +320,16 @@ class QueryParser implements QueryParserInterface
             $value = $comparison['value'];
             if ($value[0] === '"') {
                 $value = substr($value, 1, strlen($value) - 2);
-            } else if ($value === 'NULL') {
-                $value = NULL;
-            } else if (preg_match($pattern_float, $value)) {
-                $value = floatval($value);
             } else {
-                $value = intval($value);
+                if ($value === 'NULL') {
+                    $value = null;
+                } else {
+                    if (preg_match($pattern_float, $value)) {
+                        $value = floatval($value);
+                    } else {
+                        $value = intval($value);
+                    }
+                }
             }
 
             if ($comparison['comparator'] === '!=') {
@@ -293,6 +343,7 @@ class QueryParser implements QueryParserInterface
                 'value' => $value
             );
         }
+
         return $constraints;
     }
 

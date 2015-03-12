@@ -9,16 +9,8 @@
 namespace uebb\HateoasBundle\Service;
 
 
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\Reader;
-use Doctrine\Common\Util\Debug;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Form\FormBuilder;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormFactory;
 use Symfony\Component\Form\FormFactoryInterface;
-use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Component\Security\Core\Util\ClassUtils;
 use uebb\HateoasBundle\Entity\ResourceInterface;
 
 class FormResolver implements FormResolverInterface
@@ -64,17 +56,22 @@ class FormResolver implements FormResolverInterface
 
         $annotationClass = 'uebb\HateoasBundle\Annotation\FormField';
 
-        foreach($reflectionClass->getProperties() as $propertyReflection) {
+        foreach ($reflectionClass->getProperties() as $propertyReflection) {
             /**
              * @var \uebb\HateoasBundle\Annotation\FormField $annotation
              */
             $annotation = $this->annotationReader->getPropertyAnnotation($propertyReflection, $annotationClass);
             if ($annotation) {
-                $builder->add($propertyReflection->getName(), $annotation->type, is_array($annotation->options) ? $annotation->options : array());
+                $builder->add(
+                    $propertyReflection->getName(),
+                    $annotation->type,
+                    is_array($annotation->options) ? $annotation->options : array()
+                );
             }
         }
 
         $form = $builder->getForm();
+
         return $form;
     }
 }
